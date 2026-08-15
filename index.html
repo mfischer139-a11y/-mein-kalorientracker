@@ -59,13 +59,16 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 .sticky-inner{max-width:900px;margin:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .sticky button{padding:8px 6px;font-size:.82rem}
 @media(max-width:520px){.sticky button span{display:block;font-size:.72rem}.big{font-size:1.45rem}}
+#barcodeReader{min-height:220px;border-radius:14px;overflow:hidden}
+#barcodeReader video{width:100%!important;height:auto!important;object-fit:cover}
+#barcodeReader__scan_region{background:rgba(128,128,128,.10)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 <div class="wrap">
   <h1>Mein Ernährungs- & Fitnesstracker</h1>
-  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v4.1</span></div>
+  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v4.2</span></div>
 
   
 <div class="card">
@@ -1072,7 +1075,6 @@ document.getElementById('startBarcodeScanner').onclick=async()=>{
         Html5QrcodeSupportedFormats.UPC_E,
         Html5QrcodeSupportedFormats.CODE_128
       ],
-      experimentalFeatures:{useBarCodeDetectorIfSupported:true},
       verbose:false
     });
 
@@ -1081,9 +1083,14 @@ document.getElementById('startBarcodeScanner').onclick=async()=>{
     status.textContent='Kamera aktiv – Barcode möglichst gerade halten und langsam näher/weiter weg bewegen.';
 
     const config={
-      fps:15,
+      fps:10,
+      qrbox:(viewfinderWidth,viewfinderHeight)=>{
+        const width=Math.floor(Math.min(viewfinderWidth*0.86,420));
+        const height=Math.floor(Math.max(110,Math.min(viewfinderHeight*0.34,180)));
+        return {width,height};
+      },
       aspectRatio:1.333334,
-      disableFlip:true
+      disableFlip:false
     };
 
     await barcodeScanner.start(
