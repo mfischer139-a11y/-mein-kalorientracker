@@ -1,4 +1,4 @@
-const CACHE = 'kalorientracker-v3';
+const CACHE = 'kalorientracker-v4';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.svg', './icon-512.svg'];
 
 self.addEventListener('install', event => {

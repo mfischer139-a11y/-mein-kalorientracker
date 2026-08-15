@@ -1,11 +1,11 @@
 {
-  "name": "Persönlicher Kalorien-, Gewichts- & Fitnesstracker",
-  "short_name": "Fitnesstracker",
+  "name": "Persönlicher Ernährungs-, Gewichts- & Fitnesstracker",
+  "short_name": "Mein Tracker",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f5f6f8",
   "theme_color": "#111827",
-  "description": "Persönlich einrichtbarer Kalorien-, Protein-, Gewichts- und Fitnesstracker",
+  "description": "Persönlicher Kalorien-, Protein-, Gewichts- und Fitnesstracker mit Barcode-Scanner",
   "icons": [
     {
       "src": "icon-192.svg",

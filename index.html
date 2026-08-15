@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Kalorientracker">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.svg">
-<title>Mein Kalorien- & Gewichtstracker</title>
+<title>Mein Ernährungs- & Fitnesstracker</title>
 <style>
 :root{
   font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
@@ -60,10 +60,11 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 .sticky button{padding:8px 6px;font-size:.82rem}
 @media(max-width:520px){.sticky button span{display:block;font-size:.72rem}.big{font-size:1.45rem}}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 <div class="wrap">
-  <h1>Mein Kalorien- & Gewichtstracker</h1>
+  <h1>Mein Ernährungs- & Fitnesstracker</h1>
   <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert.</div>
 
   
@@ -115,9 +116,76 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
       <div class="small" style="margin-top:8px">Protein <span id="protPct"></span></div><div class="bar"><div id="protBar"></div></div>
     </div>
 
+
+    <div class="card">
+      <h2>🎯 Intelligente Zielkontrolle</h2>
+      <div id="adaptiveGoalText" class="small muted">
+        Sobald genug Gewichtsdaten vorhanden sind, beurteilt der Tracker dein Abnehmtempo automatisch.
+      </div>
+      <div class="grid two" style="margin-top:10px">
+        <div class="metric">
+          <div class="muted small">Gewichtstrend</div>
+          <div class="big" id="adaptiveRate">–</div>
+          <div class="small muted">kg / Woche</div>
+        </div>
+        <div class="metric">
+          <div class="muted small">Empfehlung</div>
+          <div class="big" id="adaptiveAction">–</div>
+          <div class="small muted">Kalorienziel</div>
+        </div>
+      </div>
+      <button id="applyAdaptiveGoal" class="primary hidden" type="button" style="margin-top:10px">
+        Empfohlenes Ziel übernehmen
+      </button>
+    </div>
+
     <div class="card">
       <h2>Schnell hinzufügen</h2>
       <div class="quick" id="quickList"></div>
+    </div>
+
+
+    <div class="card">
+      <h2>📦 Barcode-Scanner</h2>
+      <div class="note">
+        Scannt EAN/UPC-Barcodes mit der Kamera und lädt Nährwerte kostenlos aus Open Food Facts.
+        Wenn die Kamera nicht klappt, kannst du den Barcode auch eintippen.
+      </div>
+
+      <div class="actions" style="margin-top:10px">
+        <button class="primary" id="startBarcodeScanner" type="button">Kamera starten</button>
+        <button id="stopBarcodeScanner" type="button" class="hidden">Scanner stoppen</button>
+      </div>
+
+      <div id="barcodeReader" style="width:100%;margin-top:10px"></div>
+
+      <div class="grid two" style="margin-top:10px">
+        <label>Barcode manuell
+          <input id="barcodeManual" inputmode="numeric" placeholder="z. B. 4000417025005">
+        </label>
+        <label>Menge (g)
+          <input id="barcodeAmount" type="number" min="1" value="100">
+        </label>
+      </div>
+      <button id="lookupBarcode" type="button">Produkt suchen</button>
+
+      <div id="barcodeResult" class="hidden" style="margin-top:12px">
+        <div class="metric">
+          <div class="small muted">Gefundenes Produkt</div>
+          <div id="barcodeProductName" style="font-weight:700;margin-top:4px"></div>
+          <div id="barcodeProductBrand" class="small muted"></div>
+          <div style="margin-top:8px">
+            <span id="barcodeCalories"></span> kcal ·
+            <span id="barcodeProtein"></span> g Protein
+            <span class="small muted">für die gewählte Menge</span>
+          </div>
+        </div>
+        <div class="actions" style="margin-top:10px">
+          <button class="primary" id="addBarcodeProduct" type="button">Zum Tag hinzufügen</button>
+          <button id="favoriteBarcodeProduct" type="button">⭐ Als Favorit</button>
+        </div>
+      </div>
+      <div id="barcodeStatus" class="small muted" style="margin-top:8px"></div>
     </div>
 
     <div class="card">
@@ -216,6 +284,15 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
         <button class="primary" id="addFood">Eintragen</button>
         <button id="saveFavorite">Als Favorit speichern</button>
       </div>
+    </div>
+
+
+    <div class="card">
+      <h2>🧠 Gemerkte Mahlzeiten</h2>
+      <div class="small muted" style="margin-bottom:8px">
+        Der Tracker merkt sich automatisch deine zuletzt eingetragenen Mahlzeiten. Du kannst sie erneut eintragen oder zu Favoriten machen.
+      </div>
+      <div id="recentMeals"></div>
     </div>
 
     <div class="card">
@@ -393,6 +470,8 @@ const DEFAULTS={
   days:{},
   weights:[],
   profile:{name:'',sex:'male',age:'',height:'',weight:'',activity:1.5,goal:'lose',pace:500,configured:false},
+  recentMeals:[],
+  adaptive:{lastSuggestion:null},
   workoutDays:{},
   workoutHistory:[],
   exercises:[
@@ -424,7 +503,7 @@ function load(){
     const x=JSON.parse(localStorage.getItem(KEY));
     if(!x) return structuredClone(DEFAULTS);
     return {...structuredClone(DEFAULTS),...x,
-      days:x.days||{},weights:x.weights||[],favorites:x.favorites||structuredClone(DEFAULTS.favorites),profile:x.profile||structuredClone(DEFAULTS.profile),workoutDays:x.workoutDays||{},workoutHistory:x.workoutHistory||[],exercises:x.exercises||structuredClone(DEFAULTS.exercises)};
+      days:x.days||{},weights:x.weights||[],favorites:x.favorites||structuredClone(DEFAULTS.favorites),profile:x.profile||structuredClone(DEFAULTS.profile),recentMeals:x.recentMeals||[],adaptive:x.adaptive||structuredClone(DEFAULTS.adaptive),workoutDays:x.workoutDays||{},workoutHistory:x.workoutHistory||[],exercises:x.exercises||structuredClone(DEFAULTS.exercises)};
   }catch{return structuredClone(DEFAULTS)}
 }
 function save(){localStorage.setItem(KEY,JSON.stringify(data))}
@@ -470,13 +549,27 @@ function renderToday(){
     const r=document.createElement('div'); r.className='row';
     const left=document.createElement('div');
     left.innerHTML=`<strong>${e.name}</strong><div class="muted small">${e.meal||'Mahlzeit'} · ${Math.round(e.cal)} kcal · ${round1(e.prot)} g Protein</div>`;
+    const actions=document.createElement('div'); actions.className='actions';
+    const fav=document.createElement('button'); fav.textContent='⭐';
+    fav.title='Zu Favoriten hinzufügen';
+    fav.onclick=()=>addFavoriteFromMeal(e);
     const b=document.createElement('button');b.textContent='Löschen';
     b.onclick=()=>{entries.splice(i,1);save();renderAll()};
-    r.append(left,b);el.appendChild(r);
+    actions.append(fav,b);
+    r.append(left,actions);el.appendChild(r);
   });
+}
+function rememberMeal(e){
+  const key=(e.name||'').trim().toLowerCase();
+  if(!key) return;
+  const item={name:e.name,cal:+e.cal||0,prot:+e.prot||0,meal:e.meal||'Snack',lastUsed:Date.now()};
+  data.recentMeals=data.recentMeals.filter(x=>(x.name||'').trim().toLowerCase()!==key);
+  data.recentMeals.unshift(item);
+  data.recentMeals=data.recentMeals.slice(0,30);
 }
 function addEntry(e){
   day().entries.push({name:e.name,cal:+e.cal||0,prot:+e.prot||0,meal:e.meal||'Snack',ts:Date.now()});
+  rememberMeal(e);
   save();renderAll();
 }
 function renderWeights(){
@@ -531,7 +624,7 @@ function renderFavorites(){
     actions.append(add,del);r.appendChild(actions);root.appendChild(r);
   });
 }
-function renderAll(){renderToday();renderWeights();renderWeek();renderFavorites();renderFitness();renderProfile()}
+function renderAll(){renderToday();renderWeights();renderWeek();renderFavorites();renderFitness();renderProfile();renderRecentMeals();renderAdaptiveGoal()}
 function showView(name){
   ['Today','Weight','Week','Fitness','Profile','Favorites'].forEach(v=>document.getElementById('view'+v).classList.toggle('hidden',v!==name));
   document.querySelectorAll('.sticky button').forEach(b=>b.classList.toggle('active',b.dataset.view===name));
@@ -776,6 +869,221 @@ document.getElementById('recalcProfile').onclick=()=>{
   data.goalCal=r.target;data.goalProt=r.protein;save();renderAll();
 };
 document.getElementById('startProfileSetup').onclick=()=>showView('Profile');
+
+
+
+function favoriteExists(name){
+  const key=(name||'').trim().toLowerCase();
+  return data.favorites.some(x=>(x.name||'').trim().toLowerCase()===key);
+}
+function addFavoriteFromMeal(e){
+  if(favoriteExists(e.name)) return alert('Diese Mahlzeit ist bereits bei deinen Favoriten.');
+  data.favorites.unshift({name:e.name,cal:+e.cal||0,prot:+e.prot||0,meal:e.meal||'Snack'});
+  save();renderAll();
+  alert('Zu Favoriten hinzugefügt.');
+}
+function renderRecentMeals(){
+  const root=document.getElementById('recentMeals');
+  root.innerHTML='';
+  const list=(data.recentMeals||[]).slice(0,10);
+  if(!list.length){
+    root.innerHTML='<div class="small muted">Noch keine Mahlzeiten gemerkt.</div>';
+    return;
+  }
+  list.forEach(e=>{
+    const r=document.createElement('div'); r.className='row';
+    const left=document.createElement('div');
+    left.innerHTML=`<strong>${e.name}</strong><div class="small muted">${Math.round(e.cal)} kcal · ${round1(e.prot)} g Protein</div>`;
+    const actions=document.createElement('div'); actions.className='actions';
+    const again=document.createElement('button'); again.textContent='Nochmal';
+    again.onclick=()=>addEntry(e);
+    const fav=document.createElement('button'); fav.textContent=favoriteExists(e.name)?'⭐ Gespeichert':'☆ Favorit';
+    fav.disabled=favoriteExists(e.name);
+    fav.onclick=()=>addFavoriteFromMeal(e);
+    actions.append(again,fav);
+    r.append(left,actions);root.appendChild(r);
+  });
+}
+
+function calcWeeklyWeightRate(){
+  const w=[...(data.weights||[])].sort((a,b)=>a.date.localeCompare(b.date));
+  if(w.length<2) return null;
+  const latest=w[w.length-1];
+  const latestDate=new Date(latest.date+'T12:00:00');
+  const cutoff=new Date(latestDate); cutoff.setDate(cutoff.getDate()-21);
+  const usable=w.filter(x=>new Date(x.date+'T12:00:00')>=cutoff);
+  if(usable.length<2) return null;
+  const first=usable[0], last=usable[usable.length-1];
+  const days=(new Date(last.date+'T12:00:00')-new Date(first.date+'T12:00:00'))/86400000;
+  if(days<7) return null;
+  return ((last.weight-first.weight)/days)*7;
+}
+function adaptiveRecommendation(){
+  const rate=calcWeeklyWeightRate();
+  const w=[...(data.weights||[])].sort((a,b)=>a.date.localeCompare(b.date));
+  const current=w.length?w[w.length-1].weight:(+data.profile.weight||0);
+  if(rate===null || !current) return null;
+
+  const loss=-rate;
+  const pct=loss/current*100;
+  let action='beibehalten', delta=0, reason='Dein Tempo liegt in einem vernünftigen Bereich.';
+  if(loss>0 && pct>1.0){
+    action='erhöhen'; delta=150;
+    reason='Dein Gewicht fällt schneller als etwa 1 % pro Woche. Ein etwas kleineres Defizit ist sinnvoll.';
+  } else if(loss < 0){
+    action='beibehalten'; delta=0;
+    reason='Einzelne Wochen können schwanken. Erst nach mehreren Datenpunkten sollte man reagieren.';
+  } else if(pct<0.25){
+    action='senken'; delta=-150;
+    reason='Der Trend ist eher langsam. Eine kleine Anpassung kann sinnvoll sein, wenn das mindestens 2–3 Wochen so bleibt.';
+  }
+  const suggested=Math.max(data.profile.sex==='female'?1400:1600, Math.round((data.goalCal+delta)/50)*50);
+  return {rate,loss,pct,action,delta,reason,suggested};
+}
+function renderAdaptiveGoal(){
+  const r=adaptiveRecommendation();
+  const rateEl=document.getElementById('adaptiveRate');
+  const actionEl=document.getElementById('adaptiveAction');
+  const text=document.getElementById('adaptiveGoalText');
+  const btn=document.getElementById('applyAdaptiveGoal');
+  if(!r){
+    rateEl.textContent='–'; actionEl.textContent='–';
+    text.textContent='Noch nicht genug Gewichtsdaten. Trage mindestens über 7 Tage Gewicht ein, dann kann der Tracker den Trend beurteilen.';
+    btn.classList.add('hidden'); btn.dataset.goal='';
+    return;
+  }
+  rateEl.textContent=(r.rate>0?'+':'')+round1(r.rate);
+  actionEl.textContent=r.action==='beibehalten'?'halten':(r.action==='erhöhen'?'+150':'−150');
+  text.textContent=`${r.reason} Aktuelles Ziel: ${data.goalCal} kcal. Vorschlag: ${r.suggested} kcal.`;
+  if(r.suggested!==data.goalCal){
+    btn.classList.remove('hidden'); btn.dataset.goal=String(r.suggested);
+  } else {
+    btn.classList.add('hidden'); btn.dataset.goal='';
+  }
+}
+document.getElementById('applyAdaptiveGoal').onclick=()=>{
+  const goal=+document.getElementById('applyAdaptiveGoal').dataset.goal;
+  if(!goal) return;
+  data.goalCal=goal; save(); renderAll();
+  alert(`Kalorienziel auf ${goal} kcal angepasst.`);
+};
+
+let barcodeScanner=null;
+let barcodeProduct=null;
+async function lookupBarcodeCode(code){
+  const status=document.getElementById('barcodeStatus');
+  const clean=(code||'').replace(/\D/g,'');
+  if(!clean){status.textContent='Bitte einen Barcode eingeben oder scannen.';return;}
+  status.textContent='Produkt wird gesucht …';
+  document.getElementById('barcodeResult').classList.add('hidden');
+  try{
+    const fields='product_name,brands,nutriments,serving_size';
+    const url=`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(clean)}.json?fields=${fields}`;
+    const res=await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const json=await res.json();
+    if(!json.product) throw new Error('Produkt nicht gefunden');
+    const p=json.product, n=p.nutriments||{};
+    const kcal=Number(n['energy-kcal_100g'] ?? n['energy-kcal'] ?? 0);
+    const prot=Number(n['proteins_100g'] ?? n['proteins'] ?? 0);
+    if(!kcal && !prot) throw new Error('Keine passenden Nährwerte hinterlegt');
+    barcodeProduct={
+      code:clean,
+      name:p.product_name||('Produkt '+clean),
+      brand:p.brands||'',
+      kcal100:kcal,
+      prot100:prot
+    };
+    document.getElementById('barcodeProductName').textContent=barcodeProduct.name;
+    document.getElementById('barcodeProductBrand').textContent=barcodeProduct.brand;
+    recalcBarcodeResult();
+    document.getElementById('barcodeResult').classList.remove('hidden');
+    status.textContent='Produkt gefunden. Bitte Menge prüfen.';
+  }catch(err){
+    barcodeProduct=null;
+    status.textContent='Nicht gefunden oder keine Nährwerte vorhanden. Du kannst das Produkt weiterhin manuell eintragen.';
+  }
+}
+function recalcBarcodeResult(){
+  if(!barcodeProduct) return;
+  const grams=Math.max(1,+document.getElementById('barcodeAmount').value||100);
+  document.getElementById('barcodeCalories').textContent=Math.round(barcodeProduct.kcal100*grams/100);
+  document.getElementById('barcodeProtein').textContent=round1(barcodeProduct.prot100*grams/100);
+}
+document.getElementById('barcodeAmount').oninput=recalcBarcodeResult;
+document.getElementById('lookupBarcode').onclick=()=>lookupBarcodeCode(document.getElementById('barcodeManual').value);
+document.getElementById('barcodeManual').addEventListener('keydown',e=>{
+  if(e.key==='Enter') lookupBarcodeCode(e.target.value);
+});
+document.getElementById('addBarcodeProduct').onclick=()=>{
+  if(!barcodeProduct) return;
+  const grams=Math.max(1,+document.getElementById('barcodeAmount').value||100);
+  addEntry({
+    name:`${barcodeProduct.name} (${grams} g)`,
+    cal:barcodeProduct.kcal100*grams/100,
+    prot:barcodeProduct.prot100*grams/100,
+    meal:'Snack'
+  });
+};
+document.getElementById('favoriteBarcodeProduct').onclick=()=>{
+  if(!barcodeProduct) return;
+  const grams=Math.max(1,+document.getElementById('barcodeAmount').value||100);
+  addFavoriteFromMeal({
+    name:`${barcodeProduct.name} (${grams} g)`,
+    cal:barcodeProduct.kcal100*grams/100,
+    prot:barcodeProduct.prot100*grams/100,
+    meal:'Snack'
+  });
+};
+
+async function stopScanner(){
+  if(barcodeScanner){
+    try{ await barcodeScanner.stop(); }catch(e){}
+    try{ barcodeScanner.clear(); }catch(e){}
+    barcodeScanner=null;
+  }
+  document.getElementById('stopBarcodeScanner').classList.add('hidden');
+  document.getElementById('startBarcodeScanner').classList.remove('hidden');
+}
+document.getElementById('startBarcodeScanner').onclick=async()=>{
+  const status=document.getElementById('barcodeStatus');
+  if(typeof Html5Qrcode==='undefined'){
+    status.textContent='Scanner-Bibliothek konnte nicht geladen werden. Bitte Barcode manuell eingeben.';
+    return;
+  }
+  try{
+    barcodeScanner=new Html5Qrcode('barcodeReader');
+    document.getElementById('startBarcodeScanner').classList.add('hidden');
+    document.getElementById('stopBarcodeScanner').classList.remove('hidden');
+    status.textContent='Kamera aktiv – Barcode mittig ins Bild halten.';
+    const config={
+      fps:10,
+      qrbox:{width:280,height:140},
+      aspectRatio:1.777,
+      formatsToSupport:[
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.CODE_128
+      ]
+    };
+    await barcodeScanner.start(
+      {facingMode:'environment'},
+      config,
+      async(decodedText)=>{
+        document.getElementById('barcodeManual').value=decodedText;
+        await stopScanner();
+        lookupBarcodeCode(decodedText);
+      },
+      ()=>{}
+    );
+  }catch(err){
+    status.textContent='Kamera-Scanner konnte nicht gestartet werden. Bitte Kamera erlauben oder Barcode manuell eingeben.';
+    await stopScanner();
+  }
+};
+document.getElementById('stopBarcodeScanner').onclick=stopScanner;
 
 
 document.getElementById('exportData').onclick=()=>{
