@@ -18,3 +18,4 @@ Danach GitHub Pages kurz neu deployen lassen. Auf dem iPhone die App vollständi
 Hinweis Barcode:
 Kamera-Scanning benötigt Internet beim Laden der Scanner-Bibliothek und die Produktsuche benötigt Internet.
 Es entstehen keine API-Gebühren und es wird kein API-Key benötigt.
+Update 15.08.2026
