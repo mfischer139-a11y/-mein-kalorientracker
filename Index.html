@@ -1,0 +1,1198 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kalorientracker">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.svg">
+<title>Mein Ernährungs- & Fitnesstracker</title>
+<style>
+:root{
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  color-scheme:light dark;
+  --bg:#f5f6f8;--card:#fff;--text:#111;--muted:#6b7280;--border:#d7dbe0;--accent:#111827;
+}
+@media(prefers-color-scheme:dark){
+  :root{--bg:#111318;--card:#1b1e24;--text:#f5f7fa;--muted:#9ca3af;--border:#343943;--accent:#f3f4f6}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text)}
+.wrap{max-width:900px;margin:auto;padding:16px 16px 90px}
+h1{font-size:1.55rem;margin:4px 0 4px}
+h2{font-size:1.05rem;margin:0 0 12px}
+.sub{color:var(--muted);font-size:.9rem;margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:14px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(min-width:720px){.grid.four{grid-template-columns:repeat(4,1fr)}.grid.two{grid-template-columns:repeat(2,1fr)}}
+.metric{padding:12px;border:1px solid var(--border);border-radius:14px}
+.big{font-size:1.65rem;font-weight:750;line-height:1.1}
+.muted{color:var(--muted)}
+.small{font-size:.86rem}
+label{display:block;font-size:.88rem;margin:8px 0}
+input,select,button,textarea{font:inherit}
+input,select,textarea{width:100%;padding:10px 11px;border-radius:12px;border:1px solid var(--border);background:transparent;color:inherit}
+button{border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:transparent;color:inherit;cursor:pointer}
+button.primary{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:650}
+button.danger{border-color:#b91c1c;color:#b91c1c}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.quick{display:grid;grid-template-columns:1fr;gap:8px}
+@media(min-width:640px){.quick{grid-template-columns:repeat(2,1fr)}}
+.quick button{text-align:left}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--border);padding:10px 0}
+.row:first-child{border-top:0}
+.pill{display:inline-block;padding:4px 8px;border:1px solid var(--border);border-radius:999px;font-size:.78rem;color:var(--muted)}
+.bar{height:10px;border-radius:999px;background:var(--border);overflow:hidden}
+.bar>div{height:100%;width:0;background:var(--accent)}
+.tabs{display:flex;gap:8px;overflow:auto;padding-bottom:6px;margin-bottom:10px}
+.tabs button.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.hidden{display:none!important}
+.photo{display:none;width:100%;max-height:360px;object-fit:contain;border:1px solid var(--border);border-radius:14px;margin-top:10px}
+.table{width:100%;border-collapse:collapse;font-size:.9rem}
+.table th,.table td{padding:8px 6px;border-bottom:1px solid var(--border);text-align:left}
+.right{text-align:right!important}
+.note{padding:10px 12px;border:1px dashed var(--border);border-radius:12px;color:var(--muted);font-size:.86rem}
+.sticky{position:fixed;left:0;right:0;bottom:0;background:color-mix(in srgb,var(--card) 94%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--border);padding:8px 12px;z-index:20}
+.sticky-inner{max-width:900px;margin:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.sticky button{padding:8px 6px;font-size:.82rem}
+@media(max-width:520px){.sticky button span{display:block;font-size:.72rem}.big{font-size:1.45rem}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <h1>Mein Ernährungs- & Fitnesstracker</h1>
+  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v4.1</span></div>
+
+  
+<div class="card">
+  <strong>📱 iPhone-App installieren</strong>
+  <p class="small muted" style="margin-bottom:8px">
+    Öffne diese Seite in Safari, tippe auf <b>Teilen</b> und dann auf <b>Zum Home-Bildschirm</b>.
+    Danach startet der Tracker wie eine eigene App.
+  </p>
+  <div id="offlineStatus" class="small muted">Offline-Modus wird vorbereitet …</div>
+</div>
+
+<section id="viewToday">
+
+    <div id="profileWelcome" class="card hidden">
+      <h2>Willkommen 👋</h2>
+      <div class="small muted" style="margin-bottom:10px">
+        Richte zuerst dein persönliches Profil ein. Danach berechnet der Tracker passende Startwerte für Kalorien und Protein.
+      </div>
+      <button class="primary" id="startProfileSetup">Profil einrichten</button>
+    </div>
+
+    <div class="card">
+      <div class="actions" style="justify-content:space-between;align-items:center">
+        <div>
+          <div class="small muted">Aktueller Tag</div>
+          <div class="big" id="todayLabel"></div>
+        </div>
+        <label style="margin:0;min-width:160px">Tag wechseln
+          <input id="datePicker" type="date">
+        </label>
+      </div>
+    </div>
+
+    <div class="grid four">
+      <div class="metric"><div class="muted small">Kalorien</div><div class="big" id="totalCal">0</div><div class="small muted">kcal</div></div>
+      <div class="metric"><div class="muted small">Übrig</div><div class="big" id="remainingCal">2100</div><div class="small muted">kcal</div></div>
+      <div class="metric"><div class="muted small">Protein</div><div class="big" id="totalProt">0</div><div class="small muted">g</div></div>
+      <div class="metric"><div class="muted small">Einträge</div><div class="big" id="entryCount">0</div><div class="small muted">heute</div></div>
+    </div>
+
+    <div class="card">
+      <h2>Tagesziele</h2>
+      <div class="grid two">
+        <label>Kalorienziel<input id="goalCal" type="number" min="1000" max="5000" step="50"></label>
+        <label>Proteinziel (g)<input id="goalProt" type="number" min="50" max="300" step="5"></label>
+      </div>
+      <div class="small">Kalorien <span id="calPct"></span></div><div class="bar"><div id="calBar"></div></div>
+      <div class="small" style="margin-top:8px">Protein <span id="protPct"></span></div><div class="bar"><div id="protBar"></div></div>
+    </div>
+
+
+    <div class="card">
+      <h2>🎯 Intelligente Zielkontrolle</h2>
+      <div id="adaptiveGoalText" class="small muted">
+        Sobald genug Gewichtsdaten vorhanden sind, beurteilt der Tracker dein Abnehmtempo automatisch.
+      </div>
+      <div class="grid two" style="margin-top:10px">
+        <div class="metric">
+          <div class="muted small">Gewichtstrend</div>
+          <div class="big" id="adaptiveRate">–</div>
+          <div class="small muted">kg / Woche</div>
+        </div>
+        <div class="metric">
+          <div class="muted small">Empfehlung</div>
+          <div class="big" id="adaptiveAction">–</div>
+          <div class="small muted">Kalorienziel</div>
+        </div>
+      </div>
+      <button id="applyAdaptiveGoal" class="primary hidden" type="button" style="margin-top:10px">
+        Empfohlenes Ziel übernehmen
+      </button>
+    </div>
+
+    <div class="card">
+      <h2>Schnell hinzufügen</h2>
+      <div class="quick" id="quickList"></div>
+    </div>
+
+
+    <div class="card">
+      <h2>📦 Barcode-Scanner</h2>
+      <div class="note">
+        Scannt EAN/UPC-Barcodes mit der Kamera und lädt Nährwerte kostenlos aus Open Food Facts.
+        Wenn die Kamera nicht klappt, kannst du den Barcode auch eintippen.
+      </div>
+
+      <div class="actions" style="margin-top:10px">
+        <button class="primary" id="startBarcodeScanner" type="button">Kamera starten</button>
+        <button id="stopBarcodeScanner" type="button" class="hidden">Scanner stoppen</button>
+        <button id="scanBarcodePhotoBtn" type="button">Barcode fotografieren</button>
+        <input id="barcodePhotoInput" type="file" accept="image/*" capture="environment" class="hidden">
+      </div>
+
+      <div id="barcodeReader" style="width:100%;margin-top:10px"></div>
+
+      <div class="grid two" style="margin-top:10px">
+        <label>Barcode manuell
+          <input id="barcodeManual" inputmode="numeric" placeholder="z. B. 4000417025005">
+        </label>
+        <label>Menge (g)
+          <input id="barcodeAmount" type="number" min="1" value="100">
+        </label>
+      </div>
+      <button id="lookupBarcode" type="button">Produkt suchen</button>
+
+      <div id="barcodeResult" class="hidden" style="margin-top:12px">
+        <div class="metric">
+          <div class="small muted">Gefundenes Produkt</div>
+          <div id="barcodeProductName" style="font-weight:700;margin-top:4px"></div>
+          <div id="barcodeProductBrand" class="small muted"></div>
+          <div style="margin-top:8px">
+            <span id="barcodeCalories"></span> kcal ·
+            <span id="barcodeProtein"></span> g Protein
+            <span class="small muted">für die gewählte Menge</span>
+          </div>
+        </div>
+        <div class="actions" style="margin-top:10px">
+          <button class="primary" id="addBarcodeProduct" type="button">Zum Tag hinzufügen</button>
+          <button id="favoriteBarcodeProduct" type="button">⭐ Als Favorit</button>
+        </div>
+      </div>
+      <div id="barcodeStatus" class="small muted" style="margin-top:8px"></div>
+    </div>
+
+    <div class="card">
+      <h2>📷 Mahlzeit per Foto</h2>
+      <div class="note">Die Datei kann ein Foto aufnehmen und zur Mahlzeit speichern. Eine echte automatische KI-Schätzung direkt in dieser Offline-Datei ist ohne sichere Serververbindung nicht zuverlässig möglich.</div>
+      <input id="mealPhoto" type="file" accept="image/*" capture="environment" style="margin-top:10px">
+      <img id="photoPreview" class="photo" alt="Vorschau">
+      <div id="photoForm" class="hidden">
+        <div class="grid two">
+          <label>Beschreibung<input id="photoDesc" placeholder="z. B. Hähnchen, Reis, Brokkoli"></label>
+          <label>Kalorien-Schätzung<input id="photoCal" type="number" min="0" placeholder="z. B. 850"></label>
+          <label>Protein-Schätzung (g)<input id="photoProt" type="number" min="0" step=".1" placeholder="z. B. 55"></label>
+          <label>Mahlzeit<select id="photoMeal"><option>Mittag</option><option>Abendessen</option><option>Nachtisch</option><option>Snack</option></select></label>
+        </div>
+        <button class="primary" id="addPhotoMeal">Foto-Mahlzeit eintragen</button>
+      </div>
+    </div>
+
+
+    <div class="card">
+      <h2>🆓 Kostenloser Foto-Assistent</h2>
+      <div class="note">
+        Vollautomatische Bilderkennung ohne externen KI-Dienst wäre hier nicht zuverlässig.
+        Diese kostenlose Variante nutzt dein Foto als Gedächtnisstütze und berechnet die Mahlzeit aus typischen Portionsgrößen.
+      </div>
+
+      <div class="grid two" style="margin-top:10px">
+        <label>Lebensmittel
+          <select id="assistFood">
+            <option value="haehnchen">Hähnchenbrust</option>
+            <option value="pute">Putenbrust</option>
+            <option value="reis">Reis gekocht</option>
+            <option value="nudeln">Nudeln gekocht</option>
+            <option value="reisnudeln">Reisnudeln gekocht</option>
+            <option value="kartoffeln">Kartoffeln gekocht</option>
+            <option value="brokkoli">Brokkoli</option>
+            <option value="paprika">Paprika</option>
+            <option value="erbsen">Erbsen</option>
+            <option value="moehren">Möhren</option>
+            <option value="skyr">Skyr</option>
+            <option value="joghurt">Griechischer Joghurt 2%</option>
+            <option value="doener">Döner komplett</option>
+            <option value="pommes">Pommes</option>
+          </select>
+        </label>
+
+        <label>Portion
+          <select id="assistPortion">
+            <option value="small">klein</option>
+            <option value="medium" selected>mittel</option>
+            <option value="large">groß</option>
+            <option value="custom">eigene Grammzahl</option>
+          </select>
+        </label>
+      </div>
+
+      <label id="assistGramWrap" class="hidden">Gramm
+        <input id="assistGrams" type="number" min="1" placeholder="z. B. 250">
+      </label>
+
+      <div class="actions">
+        <button id="assistAdd" type="button">Zur Foto-Mahlzeit hinzufügen</button>
+        <button id="assistReset" type="button">Schätzung leeren</button>
+      </div>
+
+      <div id="assistItems" style="margin-top:10px"></div>
+
+      <div class="grid two" style="margin-top:10px">
+        <div class="metric">
+          <div class="muted small">Geschätzte Kalorien</div>
+          <div class="big" id="assistTotalCal">0</div>
+          <div class="small muted">kcal</div>
+        </div>
+        <div class="metric">
+          <div class="muted small">Geschätztes Protein</div>
+          <div class="big" id="assistTotalProt">0</div>
+          <div class="small muted">g</div>
+        </div>
+      </div>
+
+      <button class="primary" id="assistSave" type="button" style="margin-top:10px">Schätzung als Mahlzeit speichern</button>
+      <div class="small muted" style="margin-top:8px">
+        Richtwerte, keine exakte Messung. Öl, Käse, Mayo und Soßen können die Kalorien stark verändern.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Eigenes Essen eintragen</h2>
+      <div class="grid two">
+        <label>Lebensmittel / Mahlzeit<input id="foodName" placeholder="z. B. Hähnchen mit Kartoffeln"></label>
+        <label>Mahlzeit<select id="mealType"><option>Mittag</option><option>Abendessen</option><option>Nachtisch</option><option>Snack</option></select></label>
+        <label>Kalorien<input id="foodCal" type="number" min="0" placeholder="750"></label>
+        <label>Protein (g)<input id="foodProt" type="number" min="0" step=".1" placeholder="55"></label>
+      </div>
+      <div class="actions">
+        <button class="primary" id="addFood">Eintragen</button>
+        <button id="saveFavorite">Als Favorit speichern</button>
+      </div>
+    </div>
+
+
+    <div class="card">
+      <h2>🧠 Gemerkte Mahlzeiten</h2>
+      <div class="small muted" style="margin-bottom:8px">
+        Der Tracker merkt sich automatisch deine zuletzt eingetragenen Mahlzeiten. Du kannst sie erneut eintragen oder zu Favoriten machen.
+      </div>
+      <div id="recentMeals"></div>
+    </div>
+
+    <div class="card">
+      <h2>Einträge</h2>
+      <div id="entries"></div>
+    </div>
+  </section>
+
+  <section id="viewWeight" class="hidden">
+    <div class="card">
+      <h2>Gewicht eintragen</h2>
+      <div class="grid two">
+        <label>Datum<input id="weightDate" type="date"></label>
+        <label>Gewicht (kg)<input id="weightValue" type="number" min="30" max="300" step=".1" placeholder="113,1"></label>
+      </div>
+      <button class="primary" id="addWeight">Gewicht speichern</button>
+    </div>
+
+    <div class="grid four">
+      <div class="metric"><div class="muted small">Letztes Gewicht</div><div class="big" id="lastWeight">–</div><div class="small muted">kg</div></div>
+      <div class="metric"><div class="muted small">Startgewicht</div><div class="big" id="startWeight">–</div><div class="small muted">kg</div></div>
+      <div class="metric"><div class="muted small">Veränderung</div><div class="big" id="weightChange">–</div><div class="small muted">kg</div></div>
+      <div class="metric"><div class="muted small">7-Tage-Ø</div><div class="big" id="avg7">–</div><div class="small muted">kg</div></div>
+    </div>
+
+    <div class="card">
+      <h2>Gewichtsverlauf</h2>
+      <div id="weightTable"></div>
+    </div>
+  </section>
+
+  <section id="viewWeek" class="hidden">
+    <div class="card">
+      <h2>7-Tage-Übersicht</h2>
+      <div id="weekSummary"></div>
+    </div>
+  </section>
+
+
+  <section id="viewFitness" class="hidden">
+    <div class="card">
+      <h2>💪 Training heute</h2>
+      <div class="note">Für den Einstieg: 2× pro Woche Ganzkörper. Hake jeden Satz ab. Wiederholungen kannst du direkt anpassen.</div>
+      <div id="workoutList" style="margin-top:10px"></div>
+      <div class="actions" style="margin-top:10px">
+        <button class="primary" id="finishWorkout">Training heute abschließen</button>
+        <button id="resetWorkout">Häkchen zurücksetzen</button>
+      </div>
+      <div id="workoutStatus" class="small muted" style="margin-top:8px"></div>
+    </div>
+
+    <div class="card">
+      <h2>Trainingsplan</h2>
+      <div class="small muted" style="margin-bottom:8px">Du kannst Wiederholungen bzw. Sekunden verändern. Die Einstellung bleibt gespeichert.</div>
+      <div id="exerciseSettings"></div>
+    </div>
+
+    <div class="card">
+      <h2>Letzte Trainings</h2>
+      <div id="workoutHistory"></div>
+    </div>
+  </section>
+
+
+  <section id="viewProfile" class="hidden">
+    <div class="card">
+      <h2>👤 Mein Profil</h2>
+      <div class="note">
+        Diese Angaben bleiben nur auf diesem Gerät gespeichert. Daraus berechnet der Tracker grobe Startwerte für Kalorien und Protein.
+        Die Werte sind Schätzungen und können später anhand des tatsächlichen Gewichtsverlaufs angepasst werden.
+      </div>
+
+      <div class="grid two" style="margin-top:10px">
+        <label>Name / Spitzname
+          <input id="profileName" placeholder="z. B. Max">
+        </label>
+        <label>Geschlecht
+          <select id="profileSex">
+            <option value="male">männlich</option>
+            <option value="female">weiblich</option>
+          </select>
+        </label>
+        <label>Alter
+          <input id="profileAge" type="number" min="18" max="100" placeholder="39">
+        </label>
+        <label>Größe (cm)
+          <input id="profileHeight" type="number" min="130" max="230" placeholder="179">
+        </label>
+        <label>Aktuelles Gewicht (kg)
+          <input id="profileWeight" type="number" min="40" max="300" step=".1" placeholder="113,1">
+        </label>
+        <label>Aktivität
+          <select id="profileActivity">
+            <option value="1.2">wenig Bewegung</option>
+            <option value="1.35">leicht aktiv (ca. 3–5 Tsd. Schritte)</option>
+            <option value="1.5" selected>aktiv (ca. 5–10 Tsd. Schritte)</option>
+            <option value="1.65">sehr aktiv (10 Tsd.+ / körperliche Arbeit)</option>
+          </select>
+        </label>
+        <label>Ziel
+          <select id="profileGoal">
+            <option value="maintain">Gewicht halten</option>
+            <option value="lose_slow">langsam abnehmen</option>
+            <option value="lose">abnehmen</option>
+          </select>
+        </label>
+        <label>Gewünschtes Tempo
+          <select id="profilePace">
+            <option value="300">sanft</option>
+            <option value="500" selected>moderat</option>
+            <option value="700">zügig</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="actions">
+        <button class="primary" id="saveProfile">Profil speichern & Ziele berechnen</button>
+        <button id="recalcProfile">Ziele neu berechnen</button>
+      </div>
+
+      <div class="grid two" style="margin-top:12px">
+        <div class="metric">
+          <div class="muted small">Geschätzter Tagesverbrauch</div>
+          <div class="big" id="profileTdee">–</div>
+          <div class="small muted">kcal / Tag</div>
+        </div>
+        <div class="metric">
+          <div class="muted small">Empfohlenes Startziel</div>
+          <div class="big" id="profileTarget">–</div>
+          <div class="small muted">kcal / Tag</div>
+        </div>
+      </div>
+
+      <div class="note" style="margin-top:10px">
+        Beim Abnehmen zählt der Trend über mehrere Wochen. Wenn Gewicht, Hunger oder Leistungsfähigkeit nicht zum Ziel passen,
+        sollte das Kalorienziel angepasst werden statt immer weiter zu senken.
+      </div>
+    </div>
+  </section>
+
+  <section id="viewFavorites" class="hidden">
+    <div class="card">
+      <h2>Favoriten</h2>
+      <div id="favoriteList"></div>
+    </div>
+    <div class="card">
+      <h2>Daten sichern</h2>
+      <div class="note">Die Daten liegen lokal im Browser. Mit Export kannst du eine Sicherungsdatei erstellen, z. B. bevor du das Handy wechselst.</div>
+      <div class="actions" style="margin-top:10px">
+        <button id="exportData">Daten exportieren</button>
+        <button id="importBtn">Daten importieren</button>
+        <input id="importData" type="file" accept="application/json" class="hidden">
+        <button class="danger" id="resetAll">Alles löschen</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="sticky">
+  <div class="sticky-inner" style="grid-template-columns:repeat(6,1fr)">
+    <button data-view="Today">🍽️<span>Heute</span></button>
+    <button data-view="Weight">⚖️<span>Gewicht</span></button>
+    <button data-view="Week">📊<span>Woche</span></button>
+    <button data-view="Fitness">💪<span>Fitness</span></button>
+    <button data-view="Profile">👤<span>Profil</span></button>
+    <button data-view="Favorites">⭐<span>Favoriten</span></button>
+  </div>
+</div>
+
+<script>
+const KEY='mein_kalorien_tracker_v3';
+const DEFAULTS={
+  goalCal:2100,
+  goalProt:135,
+  days:{},
+  weights:[],
+  profile:{name:'',sex:'male',age:'',height:'',weight:'',activity:1.5,goal:'lose',pace:500,configured:false},
+  recentMeals:[],
+  adaptive:{lastSuggestion:null},
+  workoutDays:{},
+  workoutHistory:[],
+  exercises:[
+    {id:'chairSquat',name:'Stuhl-Kniebeugen',sets:2,target:'8–12 Wdh.'},
+    {id:'pushup',name:'Erhöhte Liegestütze',sets:2,target:'6–12 Wdh.'},
+    {id:'bridge',name:'Glute Bridge',sets:2,target:'10–15 Wdh.'},
+    {id:'birdDog',name:'Bird Dog',sets:2,target:'6–10 je Seite'},
+    {id:'lunge',name:'Ausfallschritte / Stuhl-Kniebeugen',sets:2,target:'6–10 je Seite'},
+    {id:'plank',name:'Plank',sets:2,target:'15–30 Sek.'}
+  ],
+  favorites:[
+    {name:'Aldi Protein Coffee doppelt',cal:222,prot:42,meal:'Mittag'},
+    {name:'Flohsamenschalen 5 g',cal:10,prot:0,meal:'Mittag'},
+    {name:'Apfel',cal:80,prot:.4,meal:'Snack'},
+    {name:'Banane',cal:105,prot:1.3,meal:'Snack'},
+    {name:'Protein-Pudding',cal:150,prot:20,meal:'Nachtisch'},
+    {name:'Skyr 250 g',cal:160,prot:27,meal:'Nachtisch'}
+  ]
+};
+let data=load();
+let selectedDate=todayISO();
+
+function todayISO(){
+  const d=new Date(), off=d.getTimezoneOffset();
+  return new Date(d.getTime()-off*60000).toISOString().slice(0,10);
+}
+function load(){
+  try{
+    const x=JSON.parse(localStorage.getItem(KEY));
+    if(!x) return structuredClone(DEFAULTS);
+    return {...structuredClone(DEFAULTS),...x,
+      days:x.days||{},weights:x.weights||[],favorites:x.favorites||structuredClone(DEFAULTS.favorites),profile:x.profile||structuredClone(DEFAULTS.profile),recentMeals:x.recentMeals||[],adaptive:x.adaptive||structuredClone(DEFAULTS.adaptive),workoutDays:x.workoutDays||{},workoutHistory:x.workoutHistory||[],exercises:x.exercises||structuredClone(DEFAULTS.exercises)};
+  }catch{return structuredClone(DEFAULTS)}
+}
+function save(){localStorage.setItem(KEY,JSON.stringify(data))}
+function day(date=selectedDate){
+  if(!data.days[date]) data.days[date]={entries:[]};
+  return data.days[date];
+}
+function fmtDate(iso){
+  return new Date(iso+'T12:00:00').toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'});
+}
+function sumEntries(entries){
+  return entries.reduce((a,e)=>({cal:a.cal+(+e.cal||0),prot:a.prot+(+e.prot||0)}),{cal:0,prot:0});
+}
+function round1(n){return Math.round(n*10)/10}
+
+function renderToday(){
+  document.getElementById('todayLabel').textContent=fmtDate(selectedDate);
+  document.getElementById('datePicker').value=selectedDate;
+  document.getElementById('goalCal').value=data.goalCal;
+  document.getElementById('goalProt').value=data.goalProt;
+  const entries=day().entries, s=sumEntries(entries);
+  document.getElementById('totalCal').textContent=Math.round(s.cal);
+  document.getElementById('remainingCal').textContent=Math.round(data.goalCal-s.cal);
+  document.getElementById('totalProt').textContent=round1(s.prot);
+  document.getElementById('entryCount').textContent=entries.length;
+  const cp=Math.round(s.cal/data.goalCal*100), pp=Math.round(s.prot/data.goalProt*100);
+  document.getElementById('calPct').textContent=cp+'%';
+  document.getElementById('protPct').textContent=pp+'%';
+  document.getElementById('calBar').style.width=Math.min(cp,100)+'%';
+  document.getElementById('protBar').style.width=Math.min(pp,100)+'%';
+
+  const q=document.getElementById('quickList'); q.innerHTML='';
+  data.favorites.slice(0,8).forEach((f,i)=>{
+    const b=document.createElement('button');
+    b.innerHTML=`<strong>${f.name}</strong><br><span class="muted small">${Math.round(f.cal)} kcal · ${round1(f.prot)} g Protein</span>`;
+    b.onclick=()=>addEntry({...f});
+    q.appendChild(b);
+  });
+
+  const el=document.getElementById('entries'); el.innerHTML='';
+  if(!entries.length){el.innerHTML='<div class="muted small">Noch nichts eingetragen.</div>';return}
+  entries.forEach((e,i)=>{
+    const r=document.createElement('div'); r.className='row';
+    const left=document.createElement('div');
+    left.innerHTML=`<strong>${e.name}</strong><div class="muted small">${e.meal||'Mahlzeit'} · ${Math.round(e.cal)} kcal · ${round1(e.prot)} g Protein</div>`;
+    const actions=document.createElement('div'); actions.className='actions';
+    const fav=document.createElement('button'); fav.textContent='⭐';
+    fav.title='Zu Favoriten hinzufügen';
+    fav.onclick=()=>addFavoriteFromMeal(e);
+    const b=document.createElement('button');b.textContent='Löschen';
+    b.onclick=()=>{entries.splice(i,1);save();renderAll()};
+    actions.append(fav,b);
+    r.append(left,actions);el.appendChild(r);
+  });
+}
+function rememberMeal(e){
+  const key=(e.name||'').trim().toLowerCase();
+  if(!key) return;
+  const item={name:e.name,cal:+e.cal||0,prot:+e.prot||0,meal:e.meal||'Snack',lastUsed:Date.now()};
+  data.recentMeals=data.recentMeals.filter(x=>(x.name||'').trim().toLowerCase()!==key);
+  data.recentMeals.unshift(item);
+  data.recentMeals=data.recentMeals.slice(0,30);
+}
+function addEntry(e){
+  day().entries.push({name:e.name,cal:+e.cal||0,prot:+e.prot||0,meal:e.meal||'Snack',ts:Date.now()});
+  rememberMeal(e);
+  save();renderAll();
+}
+function renderWeights(){
+  const w=[...data.weights].sort((a,b)=>a.date.localeCompare(b.date));
+  const last=w.at(-1), first=w[0];
+  document.getElementById('lastWeight').textContent=last?last.weight:'–';
+  document.getElementById('startWeight').textContent=first?first.weight:'–';
+  document.getElementById('weightChange').textContent=(last&&first)?round1(last.weight-first.weight):'–';
+  const last7=w.slice(-7);
+  document.getElementById('avg7').textContent=last7.length?round1(last7.reduce((s,x)=>s+x.weight,0)/last7.length):'–';
+  const t=document.getElementById('weightTable');
+  if(!w.length){t.innerHTML='<div class="muted small">Noch keine Gewichte gespeichert.</div>';return}
+  t.innerHTML='<table class="table"><thead><tr><th>Datum</th><th class="right">kg</th><th></th></tr></thead><tbody></tbody></table>';
+  const body=t.querySelector('tbody');
+  [...w].reverse().forEach(x=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${fmtDate(x.date)}</td><td class="right">${x.weight.toFixed(1)}</td><td class="right"></td>`;
+    const b=document.createElement('button');b.textContent='×';b.title='Löschen';
+    b.onclick=()=>{data.weights=data.weights.filter(y=>!(y.date===x.date&&y.weight===x.weight));save();renderAll()};
+    tr.children[2].appendChild(b);body.appendChild(tr);
+  });
+}
+function renderWeek(){
+  const root=document.getElementById('weekSummary');root.innerHTML='';
+  const rows=[];
+  for(let i=6;i>=0;i--){
+    const d=new Date(); d.setDate(d.getDate()-i);
+    const iso=new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+    const s=sumEntries((data.days[iso]?.entries)||[]);
+    rows.push({iso,...s});
+  }
+  const avgCal=Math.round(rows.reduce((s,x)=>s+x.cal,0)/7);
+  const avgProt=round1(rows.reduce((s,x)=>s+x.prot,0)/7);
+  root.innerHTML=`<div class="grid two">
+    <div class="metric"><div class="muted small">Ø Kalorien / Tag</div><div class="big">${avgCal}</div></div>
+    <div class="metric"><div class="muted small">Ø Protein / Tag</div><div class="big">${avgProt} g</div></div>
+  </div>
+  <table class="table" style="margin-top:12px"><thead><tr><th>Tag</th><th class="right">kcal</th><th class="right">Protein</th></tr></thead>
+  <tbody>${rows.map(x=>`<tr><td>${fmtDate(x.iso)}</td><td class="right">${Math.round(x.cal)}</td><td class="right">${round1(x.prot)} g</td></tr>`).join('')}</tbody></table>`;
+}
+function renderFavorites(){
+  const root=document.getElementById('favoriteList');root.innerHTML='';
+  if(!data.favorites.length){root.innerHTML='<div class="muted small">Noch keine Favoriten.</div>';return}
+  data.favorites.forEach((f,i)=>{
+    const r=document.createElement('div');r.className='row';
+    r.innerHTML=`<div><strong>${f.name}</strong><div class="muted small">${Math.round(f.cal)} kcal · ${round1(f.prot)} g Protein</div></div>`;
+    const actions=document.createElement('div');actions.className='actions';
+    const add=document.createElement('button');add.textContent='Heute +';
+    add.onclick=()=>{selectedDate=todayISO();addEntry(f);showView('Today')};
+    const del=document.createElement('button');del.textContent='Löschen';
+    del.onclick=()=>{data.favorites.splice(i,1);save();renderAll()};
+    actions.append(add,del);r.appendChild(actions);root.appendChild(r);
+  });
+}
+function renderAll(){renderToday();renderWeights();renderWeek();renderFavorites();renderFitness();renderProfile();renderRecentMeals();renderAdaptiveGoal()}
+function showView(name){
+  ['Today','Weight','Week','Fitness','Profile','Favorites'].forEach(v=>document.getElementById('view'+v).classList.toggle('hidden',v!==name));
+  document.querySelectorAll('.sticky button').forEach(b=>b.classList.toggle('active',b.dataset.view===name));
+  if(name==='Weight'){document.getElementById('weightDate').value=todayISO()}
+}
+
+document.getElementById('datePicker').onchange=e=>{selectedDate=e.target.value||todayISO();renderToday()};
+document.getElementById('goalCal').oninput=e=>{data.goalCal=+e.target.value||2100;save();renderToday()};
+document.getElementById('goalProt').oninput=e=>{data.goalProt=+e.target.value||135;save();renderToday()};
+document.getElementById('addFood').onclick=()=>{
+  const name=document.getElementById('foodName').value.trim(), cal=document.getElementById('foodCal').value;
+  if(!name||cal==='') return alert('Bitte Name und Kalorien eintragen.');
+  addEntry({name,cal:+cal,prot:+document.getElementById('foodProt').value||0,meal:document.getElementById('mealType').value});
+  ['foodName','foodCal','foodProt'].forEach(id=>document.getElementById(id).value='');
+};
+document.getElementById('saveFavorite').onclick=()=>{
+  const name=document.getElementById('foodName').value.trim(), cal=document.getElementById('foodCal').value;
+  if(!name||cal==='') return alert('Bitte zuerst Name und Kalorien eintragen.');
+  data.favorites.push({name,cal:+cal,prot:+document.getElementById('foodProt').value||0,meal:document.getElementById('mealType').value});
+  save();renderAll();alert('Als Favorit gespeichert.');
+};
+document.getElementById('addWeight').onclick=()=>{
+  const date=document.getElementById('weightDate').value, v=parseFloat(document.getElementById('weightValue').value.replace(',','.'));
+  if(!date||!v) return alert('Bitte Datum und Gewicht eintragen.');
+  data.weights=data.weights.filter(x=>x.date!==date);data.weights.push({date,weight:v});save();renderAll();
+  document.getElementById('weightValue').value='';
+};
+document.querySelectorAll('.sticky button').forEach(b=>b.onclick=()=>showView(b.dataset.view));
+
+const mealPhoto=document.getElementById('mealPhoto');
+mealPhoto.onchange=e=>{
+  const file=e.target.files?.[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{const p=document.getElementById('photoPreview');p.src=reader.result;p.style.display='block';document.getElementById('photoForm').classList.remove('hidden')};
+  reader.readAsDataURL(file);
+};
+document.getElementById('addPhotoMeal').onclick=()=>{
+  const cal=document.getElementById('photoCal').value;
+  if(cal==='')return alert('Bitte eine Kalorien-Schätzung eintragen.');
+  addEntry({name:'📷 '+(document.getElementById('photoDesc').value.trim()||'Mahlzeit vom Foto'),cal:+cal,prot:+document.getElementById('photoProt').value||0,meal:document.getElementById('photoMeal').value});
+  document.getElementById('mealPhoto').value='';document.getElementById('photoPreview').style.display='none';
+  document.getElementById('photoForm').classList.add('hidden');['photoDesc','photoCal','photoProt'].forEach(id=>document.getElementById(id).value='');
+};
+
+
+const foodDB={
+  haehnchen:{name:'Hähnchenbrust',kcal:165,prot:31,grams:{small:150,medium:250,large:350}},
+  pute:{name:'Putenbrust',kcal:135,prot:29,grams:{small:150,medium:250,large:350}},
+  reis:{name:'Reis gekocht',kcal:130,prot:2.7,grams:{small:150,medium:250,large:350}},
+  nudeln:{name:'Nudeln gekocht',kcal:150,prot:5.5,grams:{small:150,medium:250,large:350}},
+  reisnudeln:{name:'Reisnudeln gekocht',kcal:110,prot:1.8,grams:{small:150,medium:250,large:350}},
+  kartoffeln:{name:'Kartoffeln gekocht',kcal:77,prot:2,grams:{small:200,medium:350,large:500}},
+  brokkoli:{name:'Brokkoli',kcal:35,prot:2.4,grams:{small:100,medium:200,large:300}},
+  paprika:{name:'Paprika',kcal:31,prot:1,grams:{small:100,medium:200,large:300}},
+  erbsen:{name:'Erbsen',kcal:81,prot:5.4,grams:{small:80,medium:150,large:250}},
+  moehren:{name:'Möhren',kcal:41,prot:.9,grams:{small:100,medium:200,large:300}},
+  skyr:{name:'Skyr',kcal:63,prot:11,grams:{small:100,medium:200,large:300}},
+  joghurt:{name:'Griechischer Joghurt 2%',kcal:73,prot:9,grams:{small:100,medium:200,large:300}},
+  doener:{name:'Döner komplett',kcal:215,prot:12,grams:{small:300,medium:400,large:500}},
+  pommes:{name:'Pommes',kcal:312,prot:3.4,grams:{small:100,medium:150,large:220}}
+};
+let assist=[];
+
+function renderAssist(){
+  const root=document.getElementById('assistItems');
+  root.innerHTML='';
+  if(!assist.length){root.innerHTML='<div class="muted small">Noch nichts zur Schätzung hinzugefügt.</div>';}
+  assist.forEach((x,i)=>{
+    const r=document.createElement('div'); r.className='row';
+    r.innerHTML=`<div><strong>${x.name}</strong><div class="muted small">${x.grams} g · ${Math.round(x.kcal)} kcal · ${round1(x.prot)} g Protein</div></div>`;
+    const b=document.createElement('button'); b.textContent='Löschen';
+    b.onclick=()=>{assist.splice(i,1);renderAssist()};
+    r.appendChild(b); root.appendChild(r);
+  });
+  const total=assist.reduce((s,x)=>({kcal:s.kcal+x.kcal,prot:s.prot+x.prot}),{kcal:0,prot:0});
+  document.getElementById('assistTotalCal').textContent=Math.round(total.kcal);
+  document.getElementById('assistTotalProt').textContent=round1(total.prot);
+}
+document.getElementById('assistPortion').onchange=e=>{
+  document.getElementById('assistGramWrap').classList.toggle('hidden',e.target.value!=='custom');
+};
+document.getElementById('assistAdd').onclick=()=>{
+  const key=document.getElementById('assistFood').value;
+  const p=document.getElementById('assistPortion').value;
+  const f=foodDB[key];
+  let grams=p==='custom' ? +document.getElementById('assistGrams').value : f.grams[p];
+  if(!grams) return alert('Bitte Grammzahl eintragen.');
+  assist.push({name:f.name,grams,kcal:f.kcal*grams/100,prot:f.prot*grams/100});
+  renderAssist();
+};
+document.getElementById('assistReset').onclick=()=>{assist=[];renderAssist()};
+document.getElementById('assistSave').onclick=()=>{
+  if(!assist.length) return alert('Bitte zuerst Lebensmittel zur Schätzung hinzufügen.');
+  const total=assist.reduce((s,x)=>({kcal:s.kcal+x.kcal,prot:s.prot+x.prot}),{kcal:0,prot:0});
+  const name='📷 Foto-Schätzung: '+assist.map(x=>x.name).join(', ');
+  addEntry({name,cal:Math.round(total.kcal),prot:round1(total.prot),meal:'Abendessen'});
+  assist=[];renderAssist();
+};
+renderAssist();
+
+
+
+function workoutDay(date=selectedDate){
+  if(!data.workoutDays[date]) data.workoutDays[date]={checks:{},completed:false};
+  return data.workoutDays[date];
+}
+function renderFitness(){
+  const wd=workoutDay();
+  const root=document.getElementById('workoutList'); root.innerHTML='';
+  data.exercises.forEach(ex=>{
+    const box=document.createElement('div'); box.className='card'; box.style.marginBottom='8px';
+    const title=document.createElement('div');
+    title.innerHTML=`<strong>${ex.name}</strong><div class="small muted">${ex.sets} Sätze · Ziel: ${ex.target}</div>`;
+    box.appendChild(title);
+    for(let s=1;s<=ex.sets;s++){
+      const key=ex.id+'_'+s;
+      const row=document.createElement('label');
+      row.style.display='flex';row.style.alignItems='center';row.style.gap='10px';row.style.margin='10px 0 0';
+      const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=!!wd.checks[key]; cb.style.width='22px';cb.style.height='22px';
+      cb.onchange=()=>{wd.checks[key]=cb.checked;wd.completed=false;save();renderFitness()};
+      const txt=document.createElement('span'); txt.textContent=`Satz ${s} erledigt`;
+      row.append(cb,txt);box.appendChild(row);
+    }
+    root.appendChild(box);
+  });
+  const total=data.exercises.reduce((s,e)=>s+e.sets,0);
+  const done=Object.values(wd.checks).filter(Boolean).length;
+  document.getElementById('workoutStatus').textContent=wd.completed
+    ? `✅ Training abgeschlossen · ${done}/${total} Sätze`
+    : `${done}/${total} Sätze abgehakt`;
+
+  const settings=document.getElementById('exerciseSettings');settings.innerHTML='';
+  data.exercises.forEach((ex,i)=>{
+    const r=document.createElement('div');r.className='row';
+    const left=document.createElement('div');left.innerHTML=`<strong>${ex.name}</strong>`;
+    const inp=document.createElement('input');inp.value=ex.target;inp.style.maxWidth='160px';inp.setAttribute('aria-label','Ziel');
+    inp.onchange=()=>{data.exercises[i].target=inp.value.trim()||ex.target;save();renderFitness()};
+    r.append(left,inp);settings.appendChild(r);
+  });
+
+  const hist=document.getElementById('workoutHistory');hist.innerHTML='';
+  const completed=[...data.workoutHistory].sort().reverse().slice(0,12);
+  if(!completed.length){hist.innerHTML='<div class="small muted">Noch kein Training abgeschlossen.</div>'}
+  else completed.forEach(d=>{const r=document.createElement('div');r.className='row';r.innerHTML=`<span>${fmtDate(d)}</span><span class="pill">✅ erledigt</span>`;hist.appendChild(r)});
+}
+document.getElementById('finishWorkout').onclick=()=>{
+  const wd=workoutDay();
+  const total=data.exercises.reduce((s,e)=>s+e.sets,0);
+  const done=Object.values(wd.checks).filter(Boolean).length;
+  wd.completed=true;
+  if(!data.workoutHistory.includes(selectedDate)) data.workoutHistory.push(selectedDate);
+  save();renderFitness();
+  alert(`Training gespeichert: ${done}/${total} Sätze erledigt.`);
+};
+document.getElementById('resetWorkout').onclick=()=>{
+  if(confirm('Alle Häkchen für diesen Tag zurücksetzen?')){
+    data.workoutDays[selectedDate]={checks:{},completed:false};
+    data.workoutHistory=data.workoutHistory.filter(d=>d!==selectedDate);
+    save();renderFitness();
+  }
+};
+
+
+
+function calcProfileTargets(){
+  const p=data.profile;
+  const age=+p.age, height=+p.height, weight=+p.weight, activity=+p.activity||1.5;
+  if(!age||!height||!weight) return null;
+
+  // Mifflin-St Jeor
+  const bmr = p.sex==='female'
+    ? (10*weight + 6.25*height - 5*age - 161)
+    : (10*weight + 6.25*height - 5*age + 5);
+  const tdee = bmr * activity;
+
+  let target=tdee;
+  if(p.goal==='lose_slow') target=tdee-300;
+  if(p.goal==='lose') target=tdee-(+p.pace||500);
+
+  // Conservative floor for this consumer tracker.
+  const floor = p.sex==='female' ? 1400 : 1600;
+  target=Math.max(target,floor);
+
+  // Practical protein target based on adjusted body weight approach.
+  const referenceWeight = Math.min(weight, 90);
+  const protein = Math.round(Math.max(90, Math.min(180, referenceWeight*1.5)));
+
+  return {bmr:Math.round(bmr),tdee:Math.round(tdee),target:Math.round(target/50)*50,protein};
+}
+function fillProfileForm(){
+  const p=data.profile;
+  document.getElementById('profileName').value=p.name||'';
+  document.getElementById('profileSex').value=p.sex||'male';
+  document.getElementById('profileAge').value=p.age||'';
+  document.getElementById('profileHeight').value=p.height||'';
+  document.getElementById('profileWeight').value=p.weight||'';
+  document.getElementById('profileActivity').value=String(p.activity||1.5);
+  document.getElementById('profileGoal').value=p.goal||'lose';
+  document.getElementById('profilePace').value=String(p.pace||500);
+}
+function readProfileForm(){
+  return {
+    name:document.getElementById('profileName').value.trim(),
+    sex:document.getElementById('profileSex').value,
+    age:+document.getElementById('profileAge').value||'',
+    height:+document.getElementById('profileHeight').value||'',
+    weight:parseFloat((document.getElementById('profileWeight').value||'').replace(',','.'))||'',
+    activity:+document.getElementById('profileActivity').value||1.5,
+    goal:document.getElementById('profileGoal').value,
+    pace:+document.getElementById('profilePace').value||500,
+    configured:true
+  };
+}
+function renderProfile(){
+  fillProfileForm();
+  const r=calcProfileTargets();
+  document.getElementById('profileTdee').textContent=r?r.tdee:'–';
+  document.getElementById('profileTarget').textContent=r?r.target:'–';
+  const welcome=document.getElementById('profileWelcome');
+  if(welcome) welcome.classList.toggle('hidden',!!data.profile.configured);
+}
+document.getElementById('saveProfile').onclick=()=>{
+  const p=readProfileForm();
+  if(!p.age||!p.height||!p.weight) return alert('Bitte Alter, Größe und Gewicht eintragen.');
+  data.profile=p;
+  const r=calcProfileTargets();
+  if(r){
+    data.goalCal=r.target;
+    data.goalProt=r.protein;
+    const today=todayISO();
+    data.weights=data.weights.filter(x=>x.date!==today);
+    data.weights.push({date:today,weight:+p.weight});
+  }
+  save();renderAll();showView('Today');
+  alert(`Profil gespeichert. Startziel: ${r.target} kcal und ${r.protein} g Protein pro Tag.`);
+};
+document.getElementById('recalcProfile').onclick=()=>{
+  const p=readProfileForm();
+  if(!p.age||!p.height||!p.weight) return alert('Bitte Alter, Größe und Gewicht eintragen.');
+  data.profile=p;
+  const r=calcProfileTargets();
+  data.goalCal=r.target;data.goalProt=r.protein;save();renderAll();
+};
+document.getElementById('startProfileSetup').onclick=()=>showView('Profile');
+
+
+
+function favoriteExists(name){
+  const key=(name||'').trim().toLowerCase();
+  return data.favorites.some(x=>(x.name||'').trim().toLowerCase()===key);
+}
+function addFavoriteFromMeal(e){
+  if(favoriteExists(e.name)) return alert('Diese Mahlzeit ist bereits bei deinen Favoriten.');
+  data.favorites.unshift({name:e.name,cal:+e.cal||0,prot:+e.prot||0,meal:e.meal||'Snack'});
+  save();renderAll();
+  alert('Zu Favoriten hinzugefügt.');
+}
+function renderRecentMeals(){
+  const root=document.getElementById('recentMeals');
+  root.innerHTML='';
+  const list=(data.recentMeals||[]).slice(0,10);
+  if(!list.length){
+    root.innerHTML='<div class="small muted">Noch keine Mahlzeiten gemerkt.</div>';
+    return;
+  }
+  list.forEach(e=>{
+    const r=document.createElement('div'); r.className='row';
+    const left=document.createElement('div');
+    left.innerHTML=`<strong>${e.name}</strong><div class="small muted">${Math.round(e.cal)} kcal · ${round1(e.prot)} g Protein</div>`;
+    const actions=document.createElement('div'); actions.className='actions';
+    const again=document.createElement('button'); again.textContent='Nochmal';
+    again.onclick=()=>addEntry(e);
+    const fav=document.createElement('button'); fav.textContent=favoriteExists(e.name)?'⭐ Gespeichert':'☆ Favorit';
+    fav.disabled=favoriteExists(e.name);
+    fav.onclick=()=>addFavoriteFromMeal(e);
+    actions.append(again,fav);
+    r.append(left,actions);root.appendChild(r);
+  });
+}
+
+function calcWeeklyWeightRate(){
+  const w=[...(data.weights||[])].sort((a,b)=>a.date.localeCompare(b.date));
+  if(w.length<2) return null;
+  const latest=w[w.length-1];
+  const latestDate=new Date(latest.date+'T12:00:00');
+  const cutoff=new Date(latestDate); cutoff.setDate(cutoff.getDate()-21);
+  const usable=w.filter(x=>new Date(x.date+'T12:00:00')>=cutoff);
+  if(usable.length<2) return null;
+  const first=usable[0], last=usable[usable.length-1];
+  const days=(new Date(last.date+'T12:00:00')-new Date(first.date+'T12:00:00'))/86400000;
+  if(days<7) return null;
+  return ((last.weight-first.weight)/days)*7;
+}
+function adaptiveRecommendation(){
+  const rate=calcWeeklyWeightRate();
+  const w=[...(data.weights||[])].sort((a,b)=>a.date.localeCompare(b.date));
+  const current=w.length?w[w.length-1].weight:(+data.profile.weight||0);
+  if(rate===null || !current) return null;
+
+  const loss=-rate;
+  const pct=loss/current*100;
+  let action='beibehalten', delta=0, reason='Dein Tempo liegt in einem vernünftigen Bereich.';
+  if(loss>0 && pct>1.0){
+    action='erhöhen'; delta=150;
+    reason='Dein Gewicht fällt schneller als etwa 1 % pro Woche. Ein etwas kleineres Defizit ist sinnvoll.';
+  } else if(loss < 0){
+    action='beibehalten'; delta=0;
+    reason='Einzelne Wochen können schwanken. Erst nach mehreren Datenpunkten sollte man reagieren.';
+  } else if(pct<0.25){
+    action='senken'; delta=-150;
+    reason='Der Trend ist eher langsam. Eine kleine Anpassung kann sinnvoll sein, wenn das mindestens 2–3 Wochen so bleibt.';
+  }
+  const suggested=Math.max(data.profile.sex==='female'?1400:1600, Math.round((data.goalCal+delta)/50)*50);
+  return {rate,loss,pct,action,delta,reason,suggested};
+}
+function renderAdaptiveGoal(){
+  const r=adaptiveRecommendation();
+  const rateEl=document.getElementById('adaptiveRate');
+  const actionEl=document.getElementById('adaptiveAction');
+  const text=document.getElementById('adaptiveGoalText');
+  const btn=document.getElementById('applyAdaptiveGoal');
+  if(!r){
+    rateEl.textContent='–'; actionEl.textContent='–';
+    text.textContent='Noch nicht genug Gewichtsdaten. Trage mindestens über 7 Tage Gewicht ein, dann kann der Tracker den Trend beurteilen.';
+    btn.classList.add('hidden'); btn.dataset.goal='';
+    return;
+  }
+  rateEl.textContent=(r.rate>0?'+':'')+round1(r.rate);
+  actionEl.textContent=r.action==='beibehalten'?'halten':(r.action==='erhöhen'?'+150':'−150');
+  text.textContent=`${r.reason} Aktuelles Ziel: ${data.goalCal} kcal. Vorschlag: ${r.suggested} kcal.`;
+  if(r.suggested!==data.goalCal){
+    btn.classList.remove('hidden'); btn.dataset.goal=String(r.suggested);
+  } else {
+    btn.classList.add('hidden'); btn.dataset.goal='';
+  }
+}
+document.getElementById('applyAdaptiveGoal').onclick=()=>{
+  const goal=+document.getElementById('applyAdaptiveGoal').dataset.goal;
+  if(!goal) return;
+  data.goalCal=goal; save(); renderAll();
+  alert(`Kalorienziel auf ${goal} kcal angepasst.`);
+};
+
+let barcodeScanner=null;
+let barcodeProduct=null;
+async function lookupBarcodeCode(code){
+  const status=document.getElementById('barcodeStatus');
+  const clean=(code||'').replace(/\D/g,'');
+  if(!clean){status.textContent='Bitte einen Barcode eingeben oder scannen.';return;}
+  status.textContent='Produkt wird gesucht …';
+  document.getElementById('barcodeResult').classList.add('hidden');
+  try{
+    const fields='product_name,brands,nutriments,serving_size';
+    const url=`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(clean)}.json?fields=${fields}`;
+    const res=await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const json=await res.json();
+    if(!json.product) throw new Error('Produkt nicht gefunden');
+    const p=json.product, n=p.nutriments||{};
+    const kcal=Number(n['energy-kcal_100g'] ?? n['energy-kcal'] ?? 0);
+    const prot=Number(n['proteins_100g'] ?? n['proteins'] ?? 0);
+    if(!kcal && !prot) throw new Error('Keine passenden Nährwerte hinterlegt');
+    barcodeProduct={
+      code:clean,
+      name:p.product_name||('Produkt '+clean),
+      brand:p.brands||'',
+      kcal100:kcal,
+      prot100:prot
+    };
+    document.getElementById('barcodeProductName').textContent=barcodeProduct.name;
+    document.getElementById('barcodeProductBrand').textContent=barcodeProduct.brand;
+    recalcBarcodeResult();
+    document.getElementById('barcodeResult').classList.remove('hidden');
+    status.textContent='Produkt gefunden. Bitte Menge prüfen.';
+  }catch(err){
+    barcodeProduct=null;
+    status.textContent='Nicht gefunden oder keine Nährwerte vorhanden. Du kannst das Produkt weiterhin manuell eintragen.';
+  }
+}
+function recalcBarcodeResult(){
+  if(!barcodeProduct) return;
+  const grams=Math.max(1,+document.getElementById('barcodeAmount').value||100);
+  document.getElementById('barcodeCalories').textContent=Math.round(barcodeProduct.kcal100*grams/100);
+  document.getElementById('barcodeProtein').textContent=round1(barcodeProduct.prot100*grams/100);
+}
+document.getElementById('barcodeAmount').oninput=recalcBarcodeResult;
+document.getElementById('lookupBarcode').onclick=()=>lookupBarcodeCode(document.getElementById('barcodeManual').value);
+document.getElementById('barcodeManual').addEventListener('keydown',e=>{
+  if(e.key==='Enter') lookupBarcodeCode(e.target.value);
+});
+document.getElementById('addBarcodeProduct').onclick=()=>{
+  if(!barcodeProduct) return;
+  const grams=Math.max(1,+document.getElementById('barcodeAmount').value||100);
+  addEntry({
+    name:`${barcodeProduct.name} (${grams} g)`,
+    cal:barcodeProduct.kcal100*grams/100,
+    prot:barcodeProduct.prot100*grams/100,
+    meal:'Snack'
+  });
+};
+document.getElementById('favoriteBarcodeProduct').onclick=()=>{
+  if(!barcodeProduct) return;
+  const grams=Math.max(1,+document.getElementById('barcodeAmount').value||100);
+  addFavoriteFromMeal({
+    name:`${barcodeProduct.name} (${grams} g)`,
+    cal:barcodeProduct.kcal100*grams/100,
+    prot:barcodeProduct.prot100*grams/100,
+    meal:'Snack'
+  });
+};
+
+async function stopScanner(){
+  if(barcodeScanner){
+    try{ await barcodeScanner.stop(); }catch(e){}
+    try{ barcodeScanner.clear(); }catch(e){}
+    barcodeScanner=null;
+  }
+  document.getElementById('stopBarcodeScanner').classList.add('hidden');
+  document.getElementById('startBarcodeScanner').classList.remove('hidden');
+}
+
+function handleDecodedBarcode(decodedText){
+  const clean=(decodedText||'').replace(/\D/g,'');
+  if(!clean) return;
+  document.getElementById('barcodeManual').value=clean;
+  document.getElementById('barcodeStatus').textContent='Barcode erkannt: '+clean+' – Produkt wird gesucht …';
+  lookupBarcodeCode(clean);
+}
+
+document.getElementById('startBarcodeScanner').onclick=async()=>{
+  const status=document.getElementById('barcodeStatus');
+  if(typeof Html5Qrcode==='undefined'){
+    status.textContent='Scanner-Bibliothek konnte nicht geladen werden. Bitte Barcode manuell eingeben.';
+    return;
+  }
+
+  try{
+    barcodeScanner=new Html5Qrcode('barcodeReader', {
+      formatsToSupport:[
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.CODE_128
+      ],
+      experimentalFeatures:{useBarCodeDetectorIfSupported:true},
+      verbose:false
+    });
+
+    document.getElementById('startBarcodeScanner').classList.add('hidden');
+    document.getElementById('stopBarcodeScanner').classList.remove('hidden');
+    status.textContent='Kamera aktiv – Barcode möglichst gerade halten und langsam näher/weiter weg bewegen.';
+
+    const config={
+      fps:15,
+      aspectRatio:1.333334,
+      disableFlip:true
+    };
+
+    await barcodeScanner.start(
+      {facingMode:'environment'},
+      config,
+      async(decodedText)=>{
+        await stopScanner();
+        handleDecodedBarcode(decodedText);
+      },
+      ()=>{}
+    );
+
+    try{
+      const video=document.querySelector('#barcodeReader video');
+      const track=video?.srcObject?.getVideoTracks?.()[0];
+      const caps=track?.getCapabilities?.()||{};
+      const advanced={};
+      if(Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')){
+        advanced.focusMode='continuous';
+      }
+      if(caps.zoom && typeof caps.zoom.min==='number' && typeof caps.zoom.max==='number'){
+        advanced.zoom=Math.min(Math.max(1.25,caps.zoom.min),caps.zoom.max);
+      }
+      if(Object.keys(advanced).length){
+        await track.applyConstraints({advanced:[advanced]});
+      }
+    }catch(e){}
+  }catch(err){
+    status.textContent='Kamera-Scanner konnte nicht gestartet werden. Bitte Kamera erlauben oder „Barcode fotografieren“ nutzen.';
+    await stopScanner();
+  }
+};
+
+document.getElementById('stopBarcodeScanner').onclick=stopScanner;
+
+document.getElementById('scanBarcodePhotoBtn').onclick=()=>{
+  document.getElementById('barcodePhotoInput').click();
+};
+
+document.getElementById('barcodePhotoInput').onchange=async(e)=>{
+  const file=e.target.files?.[0];
+  if(!file) return;
+  const status=document.getElementById('barcodeStatus');
+  status.textContent='Barcode-Foto wird ausgewertet …';
+
+  try{
+    await stopScanner();
+    const photoScanner=new Html5Qrcode('barcodeReader', {
+      formatsToSupport:[
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.CODE_128
+      ],
+      experimentalFeatures:{useBarCodeDetectorIfSupported:true},
+      verbose:false
+    });
+
+    let result;
+    if(typeof photoScanner.scanFileV2==='function'){
+      const r=await photoScanner.scanFileV2(file,true);
+      result=r?.decodedText||r?.result?.text||'';
+    }else{
+      result=await photoScanner.scanFile(file,true);
+    }
+
+    try{ photoScanner.clear(); }catch(e){}
+    handleDecodedBarcode(result);
+  }catch(err){
+    status.textContent='Barcode im Foto nicht erkannt. Bitte etwas näher fotografieren, Reflexionen vermeiden oder Nummer manuell eingeben.';
+  }finally{
+    e.target.value='';
+  }
+};
+
+
+document.getElementById('exportData').onclick=()=>{
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='kalorientracker-backup-'+todayISO()+'.json';a.click();URL.revokeObjectURL(a.href);
+};
+document.getElementById('importBtn').onclick=()=>document.getElementById('importData').click();
+document.getElementById('importData').onchange=e=>{
+  const f=e.target.files?.[0];if(!f)return;
+  const r=new FileReader();r.onload=()=>{
+    try{data={...structuredClone(DEFAULTS),...JSON.parse(r.result)};save();renderAll();alert('Daten importiert.')}
+    catch{alert('Die Datei konnte nicht importiert werden.')}
+  };r.readAsText(f);
+};
+document.getElementById('resetAll').onclick=()=>{
+  if(confirm('Wirklich alle gespeicherten Daten löschen?')){data=structuredClone(DEFAULTS);save();renderAll()}
+};
+
+document.getElementById('weightDate').value=todayISO();
+showView('Today');renderAll();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      await navigator.serviceWorker.register('./sw.js');
+      const s = document.getElementById('offlineStatus');
+      if (s) s.textContent = 'Offline-Modus aktiv: Nach dem ersten Laden funktioniert die App auch ohne Internet.';
+    } catch (e) {
+      const s = document.getElementById('offlineStatus');
+      if (s) s.textContent = 'Hinweis: Offline-Modus wird erst nach Veröffentlichung über HTTPS aktiv.';
+    }
+  });
+}
+
+</script>
+</body>
+</html>
