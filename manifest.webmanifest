@@ -1,0 +1,23 @@
+{
+  "name": "Persönlicher Kalorien-, Gewichts- & Fitnesstracker",
+  "short_name": "Fitnesstracker",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f5f6f8",
+  "theme_color": "#111827",
+  "description": "Persönlich einrichtbarer Kalorien-, Protein-, Gewichts- und Fitnesstracker",
+  "icons": [
+    {
+      "src": "icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
