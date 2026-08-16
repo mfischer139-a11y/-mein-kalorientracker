@@ -124,13 +124,29 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 .recipe-photo-preview{display:none;width:100%;max-height:300px;object-fit:cover;border:1px solid var(--border);border-radius:14px;margin-top:8px}
 .recipe-photo{width:100%;max-height:320px;object-fit:cover;border-radius:12px;border:1px solid var(--border);margin:8px 0 4px}
 .recipe-photo-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+
+/* v5.0 Tagesziele, Streaks & EP */
+.daily-challenge-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.daily-streak-pill{border:1px solid var(--border);border-radius:999px;padding:6px 10px;font-weight:700;white-space:nowrap}
+.daily-goals{display:grid;gap:8px;margin-top:12px}
+.daily-goal{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border:1px solid var(--border);border-radius:14px}
+.daily-goal.done{border-color:#3b82f6;background:color-mix(in srgb,#3b82f6 10%,transparent)}
+.daily-goal-main{display:flex;align-items:center;gap:10px;min-width:0}
+.daily-goal-icon{font-size:1.3rem;width:30px;text-align:center}
+.daily-goal strong{display:block}
+.daily-goal-status{font-weight:800;white-space:nowrap}
+.daily-ep-today{font-size:1.15rem;font-weight:800;margin-top:12px}
+.daily-claim{width:100%;margin-top:10px}
+.daily-claim[disabled]{opacity:.55;cursor:default}
+.daily-rule{margin-top:9px;color:var(--muted);font-size:.82rem;line-height:1.35}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 <div class="wrap">
   <h1>Mein Ernährungs- & Fitnesstracker</h1>
-  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v4.9</span></div>
+  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v5.0</span></div>
 
   
 <div class="card">
@@ -209,6 +225,34 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
       <div class="water-progress">
         <div class="bar"><div id="waterBar"></div></div>
       </div>
+    </div>
+
+
+    <div class="card" id="dailyChallengeCard">
+      <div class="daily-challenge-head">
+        <div>
+          <h2 style="margin-bottom:4px">🔥 Tages-Challenge</h2>
+          <div class="small muted">Konstanz bringt zusätzliche EP – jede Belohnung pro Tag nur einmal.</div>
+        </div>
+        <div class="daily-streak-pill">🔥 <span id="dailyStreak">0</span> Tage</div>
+      </div>
+      <div class="daily-goals">
+        <div class="daily-goal" id="dailyGoalTrack">
+          <div class="daily-goal-main"><div class="daily-goal-icon">🍽️</div><div><strong>Ernährung getrackt</strong><div class="small muted">Mindestens 2 Einträge · +10 EP</div></div></div>
+          <div class="daily-goal-status" id="dailyTrackStatus">○</div>
+        </div>
+        <div class="daily-goal" id="dailyGoalWater">
+          <div class="daily-goal-main"><div class="daily-goal-icon">💧</div><div><strong>Wasserziel erreicht</strong><div class="small muted">Mindestens 2,5 L · +10 EP</div></div></div>
+          <div class="daily-goal-status" id="dailyWaterStatus">○</div>
+        </div>
+        <div class="daily-goal" id="dailyGoalCalories">
+          <div class="daily-goal-main"><div class="daily-goal-icon">🎯</div><div><strong>Kalorienziel im Bereich</strong><div class="small muted">80–105 % deines Tagesziels · +15 EP</div></div></div>
+          <div class="daily-goal-status" id="dailyCaloriesStatus">○</div>
+        </div>
+      </div>
+      <div class="daily-ep-today">Heute möglich: <span id="dailyAvailableXp">0</span> EP · bereits gesichert: <span id="dailyEarnedXp">0</span> EP</div>
+      <button class="primary daily-claim" id="claimDailyXp" type="button">Tages-EP sichern</button>
+      <div class="daily-rule">Streak-Boni: 5 Tage +25 EP · 10 Tage +50 EP · 30 Tage +150 EP · 100 Tage +500 EP. Das Kalorienziel belohnt den Zielbereich statt möglichst wenig Essen.</div>
     </div>
 
     <div class="card">
@@ -642,6 +686,8 @@ const DEFAULTS={
   workoutDays:{},
   workoutHistory:[],
   fitnessXp:0,
+  dailyRewards:{},
+  streakMilestones:{},
   exercises:[
     {id:'chairSquat',name:'Stuhl-Kniebeugen',sets:2,target:'8–12 Wdh.'},
     {id:'pushup',name:'Erhöhte Liegestütze',sets:2,target:'6–12 Wdh.'},
@@ -671,7 +717,7 @@ function load(){
     const x=JSON.parse(localStorage.getItem(KEY));
     if(!x) return structuredClone(DEFAULTS);
     return {...structuredClone(DEFAULTS),...x,
-      days:x.days||{},weights:x.weights||[],favorites:x.favorites||structuredClone(DEFAULTS.favorites),profile:x.profile||structuredClone(DEFAULTS.profile),recentMeals:x.recentMeals||[],recipes:x.recipes||[],adaptive:x.adaptive||structuredClone(DEFAULTS.adaptive),workoutDays:x.workoutDays||{},workoutHistory:x.workoutHistory||[],fitnessXp:+x.fitnessXp||0,exercises:x.exercises||structuredClone(DEFAULTS.exercises)};
+      days:x.days||{},weights:x.weights||[],favorites:x.favorites||structuredClone(DEFAULTS.favorites),profile:x.profile||structuredClone(DEFAULTS.profile),recentMeals:x.recentMeals||[],recipes:x.recipes||[],adaptive:x.adaptive||structuredClone(DEFAULTS.adaptive),workoutDays:x.workoutDays||{},workoutHistory:x.workoutHistory||[],fitnessXp:+x.fitnessXp||0,dailyRewards:x.dailyRewards||{},streakMilestones:x.streakMilestones||{},exercises:x.exercises||structuredClone(DEFAULTS.exercises)};
   }catch{return structuredClone(DEFAULTS)}
 }
 function save(){localStorage.setItem(KEY,JSON.stringify(data))}
@@ -705,6 +751,7 @@ function renderToday(){
   document.getElementById('protBar').style.width=Math.min(pp,100)+'%';
 
   renderWater();
+  renderDailyChallenge();
 
   const q=document.getElementById('quickList'); q.innerHTML='';
   data.favorites.slice(0,8).forEach((f,i)=>{
@@ -807,6 +854,131 @@ function changeWater(delta){
 document.getElementById('waterMinus250').onclick=()=>changeWater(-250);
 document.getElementById('waterPlus250').onclick=()=>changeWater(250);
 document.getElementById('waterPlus500').onclick=()=>changeWater(500);
+
+
+const DAILY_XP_TRACK=10;
+const DAILY_XP_WATER=10;
+const DAILY_XP_CALORIES=15;
+const DAILY_WATER_GOAL=2500;
+const STREAK_BONUSES={5:25,10:50,30:150,100:500};
+
+function dailyReward(date=selectedDate){
+  if(!data.dailyRewards) data.dailyRewards={};
+  if(!data.dailyRewards[date]) data.dailyRewards[date]={track:false,water:false,calories:false,xp:0};
+  return data.dailyRewards[date];
+}
+function dailyEligibility(date=selectedDate){
+  const d=day(date), s=sumEntries(d.entries||[]);
+  const goal=Math.max(1,+data.goalCal||2100);
+  const ratio=s.cal/goal;
+  return {
+    track:(d.entries||[]).length>=2,
+    water:(+d.waterMl||0)>=DAILY_WATER_GOAL,
+    calories:s.cal>0 && ratio>=0.80 && ratio<=1.05,
+    caloriesRatio:ratio,
+    calories:s.cal
+  };
+}
+function dateAdd(iso,delta){
+  const d=new Date(iso+'T12:00:00'); d.setDate(d.getDate()+delta);
+  return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+}
+function trackingDates(){
+  return Object.keys(data.dailyRewards||{}).filter(d=>data.dailyRewards[d]?.track).sort();
+}
+function streakEndingAt(date=selectedDate){
+  let streak=0, cur=date;
+  while(data.dailyRewards?.[cur]?.track){ streak++; cur=dateAdd(cur,-1); }
+  return streak;
+}
+function currentTrackingStreak(){
+  const today=todayISO();
+  if(data.dailyRewards?.[today]?.track) return streakEndingAt(today);
+  const yesterday=dateAdd(today,-1);
+  return data.dailyRewards?.[yesterday]?.track ? streakEndingAt(yesterday) : 0;
+}
+function maxTrackingStreak(){
+  const dates=trackingDates();
+  if(!dates.length) return 0;
+  let best=1, run=1;
+  for(let i=1;i<dates.length;i++){
+    if(dates[i]===dateAdd(dates[i-1],1)){ run++; best=Math.max(best,run); }
+    else run=1;
+  }
+  return best;
+}
+function dailyHabitStats(){
+  const rewards=Object.values(data.dailyRewards||{});
+  return {
+    tracked:rewards.filter(r=>r.track).length,
+    water:rewards.filter(r=>r.water).length,
+    calories:rewards.filter(r=>r.calories).length,
+    currentStreak:currentTrackingStreak(),
+    maxStreak:maxTrackingStreak()
+  };
+}
+function availableDailyXp(date=selectedDate){
+  const e=dailyEligibility(date), r=dailyReward(date);
+  let xp=0;
+  if(e.track&&!r.track) xp+=DAILY_XP_TRACK;
+  if(e.water&&!r.water) xp+=DAILY_XP_WATER;
+  if(e.calories&&!r.calories) xp+=DAILY_XP_CALORIES;
+  return xp;
+}
+function renderDailyChallenge(){
+  const e=dailyEligibility(), r=dailyReward();
+  const defs=[
+    ['Track',e.track,r.track],['Water',e.water,r.water],['Calories',e.calories,r.calories]
+  ];
+  defs.forEach(([key,eligible,awarded])=>{
+    const box=document.getElementById('dailyGoal'+key), status=document.getElementById('daily'+key+'Status');
+    if(!box||!status) return;
+    box.classList.toggle('done',eligible);
+    status.textContent=awarded?'✅':(eligible?'✓':'○');
+    status.title=awarded?'EP bereits gesichert':(eligible?'Bereit zum Sichern':'Noch offen');
+  });
+  const streak=streakEndingAt(selectedDate);
+  document.getElementById('dailyStreak').textContent=streak;
+  const avail=availableDailyXp();
+  document.getElementById('dailyAvailableXp').textContent=avail;
+  document.getElementById('dailyEarnedXp').textContent=+r.xp||0;
+  const btn=document.getElementById('claimDailyXp');
+  btn.disabled=avail<=0;
+  btn.textContent=avail>0?`Tages-EP sichern (+${avail} EP)`:'Heute aktuell keine neuen EP verfügbar';
+}
+function awardStreakMilestones(streak){
+  if(!data.streakMilestones) data.streakMilestones={};
+  let bonus=0, unlocked=[];
+  [5,10,30,100].forEach(m=>{
+    if(streak>=m&&!data.streakMilestones[m]){
+      data.streakMilestones[m]=true;
+      bonus+=STREAK_BONUSES[m];
+      unlocked.push(`${m} Tage (+${STREAK_BONUSES[m]} EP)`);
+    }
+  });
+  if(bonus){
+    awardFitnessXp(bonus);
+    setTimeout(()=>alert(`🔥 STREAK-BONUS!\n\n${unlocked.join('\n')}\n\n${bonus} Bonus-EP gesichert. Weiter so! 💪🏼`),120);
+  }
+  return bonus;
+}
+function claimDailyXp(){
+  const e=dailyEligibility(), r=dailyReward();
+  let gained=0, labels=[];
+  if(e.track&&!r.track){r.track=true;gained+=DAILY_XP_TRACK;labels.push(`🍽️ Tracking +${DAILY_XP_TRACK}`);}
+  if(e.water&&!r.water){r.water=true;gained+=DAILY_XP_WATER;labels.push(`💧 Wasser +${DAILY_XP_WATER}`);}
+  if(e.calories&&!r.calories){r.calories=true;gained+=DAILY_XP_CALORIES;labels.push(`🎯 Kalorien +${DAILY_XP_CALORIES}`);}
+  if(!gained) return;
+  r.xp=(+r.xp||0)+gained;
+  awardFitnessXp(gained);
+  const streak=r.track?streakEndingAt(selectedDate):0;
+  const streakBonus=awardStreakMilestones(streak);
+  save();renderAll();
+  const bonusText=streakBonus?`\n🔥 Dazu ${streakBonus} Streak-Bonus-EP!`:'';
+  alert(`✅ Tages-EP gesichert!\n\n${labels.join('\n')}\n\n+${gained} EP${bonusText}`);
+}
+document.getElementById('claimDailyXp').onclick=claimDailyXp;
+
 
 function renderWeights(){
   const w=[...data.weights].sort((a,b)=>a.date.localeCompare(b.date));
@@ -1129,14 +1301,19 @@ const FITNESS_RANKS=[
   {level:5,name:'Einsteiger',icon:'🌱'}
 ];
 const FITNESS_ACHIEVEMENTS=[
-  {icon:'🎬',name:'Losgelegt',desc:'Erstes Training abgeschlossen',test:(xp,t)=>t>=1},
-  {icon:'⭐',name:'500 EP',desc:'500 Erfahrungspunkte gesammelt',test:(xp,t)=>xp>=500},
-  {icon:'🔥',name:'Dranbleiber',desc:'5 Trainings abgeschlossen',test:(xp,t)=>t>=5},
-  {icon:'💪',name:'10 Trainings',desc:'Zweistellig trainiert',test:(xp,t)=>t>=10},
-  {icon:'🏅',name:'2.500 EP',desc:'2.500 Erfahrungspunkte gesammelt',test:(xp,t)=>xp>=2500},
-  {icon:'🏆',name:'25 Trainings',desc:'25 Trainings abgeschlossen',test:(xp,t)=>t>=25},
-  {icon:'⚡',name:'50 Trainings',desc:'50 Trainings abgeschlossen',test:(xp,t)=>t>=50},
-  {icon:'👑',name:'100 Trainings',desc:'100 Trainings abgeschlossen',test:(xp,t)=>t>=100}
+  {icon:'🎬',name:'Losgelegt',desc:'Erstes Training abgeschlossen',test:(xp,t,h)=>t>=1},
+  {icon:'📅',name:'5-Tage-Serie',desc:'5 Tage Ernährung konsequent getrackt',test:(xp,t,h)=>h.maxStreak>=5},
+  {icon:'💧',name:'Hydriert',desc:'7 Wasserziele erreicht',test:(xp,t,h)=>h.water>=7},
+  {icon:'⭐',name:'500 EP',desc:'500 Erfahrungspunkte gesammelt',test:(xp,t,h)=>xp>=500},
+  {icon:'🔥',name:'Dranbleiber',desc:'5 Trainings abgeschlossen',test:(xp,t,h)=>t>=5},
+  {icon:'🗓️',name:'Monatsroutine',desc:'30 Tage Tracking-Serie erreicht',test:(xp,t,h)=>h.maxStreak>=30},
+  {icon:'💪',name:'10 Trainings',desc:'Zweistellig trainiert',test:(xp,t,h)=>t>=10},
+  {icon:'🎯',name:'Im Ziel',desc:'10 Tage Kalorienziel im Zielbereich',test:(xp,t,h)=>h.calories>=10},
+  {icon:'🏅',name:'2.500 EP',desc:'2.500 Erfahrungspunkte gesammelt',test:(xp,t,h)=>xp>=2500},
+  {icon:'🏆',name:'25 Trainings',desc:'25 Trainings abgeschlossen',test:(xp,t,h)=>t>=25},
+  {icon:'⚡',name:'50 Trainings',desc:'50 Trainings abgeschlossen',test:(xp,t,h)=>t>=50},
+  {icon:'💯',name:'Gewohnheit gemeistert',desc:'100 Tage Tracking-Serie erreicht',test:(xp,t,h)=>h.maxStreak>=100},
+  {icon:'👑',name:'100 Trainings',desc:'100 Trainings abgeschlossen',test:(xp,t,h)=>t>=100}
 ];
 function fitnessRank(level){ return FITNESS_RANKS.find(r=>level>=r.level)||null; }
 function fitnessLevelInfo(){
@@ -1160,7 +1337,7 @@ function awardFitnessXp(amount){
   announceFitnessMilestone(oldXp,data.fitnessXp);
 }
 function renderFitnessXp(){
-  const info=fitnessLevelInfo(), trainings=(data.workoutHistory||[]).length;
+  const info=fitnessLevelInfo(), trainings=(data.workoutHistory||[]).length, habits=dailyHabitStats();
   document.getElementById('fitnessLevelBadge').textContent=info.level;
   document.getElementById('fitnessLevelText').textContent='Level '+info.level;
   document.getElementById('fitnessXpTotal').textContent=info.xp;
@@ -1170,7 +1347,7 @@ function renderFitnessXp(){
   document.getElementById('fitnessXpToNext').textContent=`Noch ${info.next} EP bis Level ${info.level+1}`;
   document.getElementById('fitnessCompletedCount').textContent=trainings;
   const root=document.getElementById('fitnessAchievements');
-  root.innerHTML=FITNESS_ACHIEVEMENTS.map(a=>{const ok=a.test(info.xp,trainings);return `<div class="achievement ${ok?'':'locked'}"><div class="achievement-icon">${ok?a.icon:'🔒'}</div><div><strong>${a.name}</strong><span>${a.desc}</span></div></div>`}).join('');
+  root.innerHTML=FITNESS_ACHIEVEMENTS.map(a=>{const ok=a.test(info.xp,trainings,habits);return `<div class="achievement ${ok?'':'locked'}"><div class="achievement-icon">${ok?a.icon:'🔒'}</div><div><strong>${a.name}</strong><span>${a.desc}</span></div></div>`}).join('');
 }
 
 const EXERCISE_TUTORIALS={
@@ -1268,9 +1445,10 @@ document.getElementById('shareFitnessProgress').onclick=async()=>{
   const info=fitnessLevelInfo();
   const trainings=(data.workoutHistory||[]).length;
   const rank=info.rank?`${info.rank.icon} ${info.rank.name}`:'Noch kein Rang';
-  const badges=FITNESS_ACHIEVEMENTS.filter(a=>a.test(info.xp,trainings)).length;
+  const habits=dailyHabitStats();
+  const badges=FITNESS_ACHIEVEMENTS.filter(a=>a.test(info.xp,trainings,habits)).length;
   const blocks=Math.round(info.pct/10), bar='█'.repeat(blocks)+'░'.repeat(10-blocks);
-  const text=`💪 MEIN FITNESS-FORTSCHRITT\n\n🏆 Level ${info.level} · ${rank}\n⭐ ${info.xp} EP\n🔥 ${trainings} Training${trainings===1?'':'s'} abgeschlossen\n🏅 ${badges} Erfolge\n\nNächstes Level:\n${bar} ${info.pct}%\nNoch ${info.next} EP bis Level ${info.level+1}.\n\nWer sammelt diese Woche mehr EP? 😄`;
+  const text=`💪 MEIN FITNESS-FORTSCHRITT\n\n🏆 Level ${info.level} · ${rank}\n⭐ ${info.xp} EP\n🔥 ${trainings} Training${trainings===1?'':'s'} abgeschlossen\n🏅 ${badges} Erfolge\n🔥 ${habits.currentStreak} Tage aktuelle Tracking-Serie\n💧 ${habits.water} Wasserziele erreicht\n\nNächstes Level:\n${bar} ${info.pct}%\nNoch ${info.next} EP bis Level ${info.level+1}.\n\nWer sammelt diese Woche mehr EP? 😄`;
   try{
     if(navigator.share){
       await navigator.share({title:'Mein Fitness-Fortschritt',text});
