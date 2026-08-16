@@ -125,7 +125,7 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 .recipe-photo{width:100%;max-height:320px;object-fit:cover;border-radius:12px;border:1px solid var(--border);margin:8px 0 4px}
 .recipe-photo-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 
-/* v5.3 Schritt-Meilensteine + Tagesziele, Streaks & EP */
+/* v5.4 Foto-Tagebuch + Schritt-Meilensteine + Tagesziele, Streaks & EP */
 .daily-challenge-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 .daily-streak-pill{border:1px solid var(--border);border-radius:999px;padding:6px 10px;font-weight:700;white-space:nowrap}
 .daily-goals{display:grid;gap:8px;margin-top:12px}
@@ -143,13 +143,33 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 
 .steps-card{border-color:#334155}.steps-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.steps-pill{background:#172554;border:1px solid #1d4ed8;border-radius:999px;padding:7px 10px;font-weight:800;white-space:nowrap}.steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.steps-stat{background:#0b1220;border:1px solid #243047;border-radius:12px;padding:10px;text-align:center}.steps-stat strong{display:block;font-size:20px}.steps-controls{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:12px}.steps-controls input{margin:0}.steps-note{margin-top:9px;font-size:12px;color:var(--muted)}
 @media(max-width:560px){.steps-grid{grid-template-columns:1fr 1fr}.steps-stat:last-child{grid-column:1/-1}}
+
+
+/* v5.4 Körper-Fototagebuch */
+.photo-diary-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.photo-diary-preview{display:none;width:100%;max-height:420px;object-fit:contain;background:#0b0f16;border:1px solid var(--border);border-radius:14px;margin-top:10px}
+.photo-diary-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.photo-diary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+.photo-diary-item{border:1px solid var(--border);border-radius:14px;overflow:hidden;background:color-mix(in srgb,var(--card) 94%,transparent)}
+.photo-diary-item img{display:block;width:100%;aspect-ratio:3/4;object-fit:cover;background:#0b0f16}
+.photo-diary-meta{padding:9px 10px}
+.photo-diary-date{font-weight:800}
+.photo-diary-note{font-size:.8rem;color:var(--muted);margin-top:3px;white-space:pre-wrap}
+.photo-diary-item button{width:100%;border:0;border-top:1px solid var(--border);border-radius:0;color:#ef4444;background:transparent}
+.photo-compare{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.photo-compare-box{position:relative;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:#0b0f16}
+.photo-compare-box img{display:block;width:100%;aspect-ratio:3/4;object-fit:cover}
+.photo-compare-label{position:absolute;left:8px;bottom:8px;padding:4px 7px;border-radius:999px;background:rgba(0,0,0,.65);color:#fff;font-size:.72rem;font-weight:800}
+.photo-diary-empty{padding:12px;border:1px dashed var(--border);border-radius:12px;color:var(--muted);margin-top:10px}
+@media(max-width:520px){.photo-diary-grid{grid-template-columns:1fr 1fr}.photo-compare{grid-template-columns:1fr 1fr}}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 <div class="wrap">
   <h1>Mein Ernährungs- & Fitnesstracker</h1>
-  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v5.3</span></div>
+  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v5.4</span></div>
 
   
 <div class="card">
@@ -617,6 +637,42 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
         sollte das Kalorienziel angepasst werden statt immer weiter zu senken.
       </div>
     </div>
+
+    <div class="card" id="photoDiaryCard">
+      <div class="photo-diary-head">
+        <div>
+          <h2 style="margin-bottom:4px">📸 Mein Foto-Tagebuch</h2>
+          <div class="small muted">Halte deine sichtbare Veränderung fest. Fotos bleiben auf diesem Gerät gespeichert.</div>
+        </div>
+        <span class="rank-pill" id="photoDiaryCount">0 Fotos</span>
+      </div>
+
+      <div class="note" style="margin-top:10px">
+        Tipp: Für gute Vergleiche möglichst ähnliche Kleidung, Perspektive, Abstand und Licht verwenden. Die Fotos werden verkleinert gespeichert.
+      </div>
+
+      <div class="grid two" style="margin-top:10px">
+        <label>Datum
+          <input id="bodyPhotoDate" type="date">
+        </label>
+        <label>Notiz (optional)
+          <input id="bodyPhotoNote" placeholder="z. B. Woche 4">
+        </label>
+      </div>
+      <label style="margin-top:10px">Körperfoto
+        <input id="bodyPhotoInput" type="file" accept="image/*">
+      </label>
+      <img id="bodyPhotoPreview" class="photo-diary-preview" alt="Vorschau Körperfoto">
+      <div class="photo-diary-actions">
+        <button class="primary" id="saveBodyPhoto" type="button">📸 Foto speichern</button>
+        <button id="clearBodyPhoto" type="button">Auswahl entfernen</button>
+      </div>
+      <div id="bodyPhotoStatus" class="small muted" style="margin-top:8px"></div>
+
+      <div id="photoDiaryCompare"></div>
+      <div id="photoDiaryList"></div>
+    </div>
+
   </section>
 
   <section id="viewRecipes" class="hidden">
@@ -1577,6 +1633,9 @@ function readProfileForm(){
 }
 function renderProfile(){
   fillProfileForm();
+  const bodyDate=document.getElementById('bodyPhotoDate');
+  if(bodyDate&&!bodyDate.value) bodyDate.value=todayISO();
+  renderPhotoDiary();
   const r=calcProfileTargets();
   document.getElementById('profileTdee').textContent=r?r.tdee:'–';
   document.getElementById('profileTarget').textContent=r?r.target:'–';
@@ -1953,6 +2012,141 @@ if ('serviceWorker' in navigator) {
   // Auch bei lange geöffneter App regelmäßig aktualisieren.
   setInterval(checkForAppUpdate, 60 * 60 * 1000);
 }
+
+
+
+// v5.4 - Körper-Fototagebuch in IndexedDB, damit Bilder nicht den normalen Tracker-Speicher füllen.
+const PHOTO_DB_NAME='mein_fitnesstracker_fototagebuch_v1';
+const PHOTO_STORE='photos';
+let pendingBodyPhoto='';
+
+function openPhotoDiaryDb(){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open(PHOTO_DB_NAME,1);
+    req.onupgradeneeded=()=>{
+      const db=req.result;
+      if(!db.objectStoreNames.contains(PHOTO_STORE)){
+        const store=db.createObjectStore(PHOTO_STORE,{keyPath:'id',autoIncrement:true});
+        store.createIndex('date','date',{unique:false});
+      }
+    };
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+}
+function photoDbRequest(mode,action){
+  return openPhotoDiaryDb().then(db=>new Promise((resolve,reject)=>{
+    const tx=db.transaction(PHOTO_STORE,mode);
+    const store=tx.objectStore(PHOTO_STORE);
+    let req;
+    try{req=action(store)}catch(err){db.close();reject(err);return}
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+    tx.oncomplete=()=>db.close();
+  }));
+}
+function getBodyPhotos(){
+  return photoDbRequest('readonly',store=>store.getAll()).then(rows=>rows.sort((a,b)=>(a.date||'').localeCompare(b.date||'')||(a.id-b.id)));
+}
+function addBodyPhotoRecord(record){return photoDbRequest('readwrite',store=>store.add(record))}
+function deleteBodyPhotoRecord(id){return photoDbRequest('readwrite',store=>store.delete(id))}
+
+async function compressBodyPhoto(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onerror=()=>reject(reader.error);
+    reader.onload=()=>{
+      const img=new Image();
+      img.onerror=()=>reject(new Error('Bild konnte nicht geladen werden'));
+      img.onload=()=>{
+        const maxSide=1000;
+        const scale=Math.min(1,maxSide/Math.max(img.width,img.height));
+        const canvas=document.createElement('canvas');
+        canvas.width=Math.max(1,Math.round(img.width*scale));
+        canvas.height=Math.max(1,Math.round(img.height*scale));
+        const ctx=canvas.getContext('2d');
+        ctx.drawImage(img,0,0,canvas.width,canvas.height);
+        resolve(canvas.toDataURL('image/jpeg',0.72));
+      };
+      img.src=reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function clearBodyPhotoSelection(){
+  pendingBodyPhoto='';
+  const input=document.getElementById('bodyPhotoInput');
+  const preview=document.getElementById('bodyPhotoPreview');
+  if(input) input.value='';
+  if(preview){preview.src='';preview.style.display='none'}
+}
+async function renderPhotoDiary(){
+  const list=document.getElementById('photoDiaryList');
+  const compare=document.getElementById('photoDiaryCompare');
+  const count=document.getElementById('photoDiaryCount');
+  if(!list||!compare||!count) return;
+  try{
+    const photos=await getBodyPhotos();
+    count.textContent=photos.length===1?'1 Foto':`${photos.length} Fotos`;
+    if(!photos.length){
+      compare.innerHTML='';
+      list.innerHTML='<div class="photo-diary-empty">Noch keine Fotos gespeichert. Dein erstes Foto wird später zum Ausgangspunkt fuer den Vergleich.</div>';
+      return;
+    }
+    if(photos.length>=2){
+      const first=photos[0], latest=photos[photos.length-1];
+      compare.innerHTML=`<h3 style="margin:14px 0 6px">Vorher / Aktuell</h3><div class="photo-compare"><div class="photo-compare-box"><img src="${first.image}" alt="Erstes Fortschrittsfoto"><span class="photo-compare-label">Start · ${escapeHtml(first.date||'')}</span></div><div class="photo-compare-box"><img src="${latest.image}" alt="Aktuelles Fortschrittsfoto"><span class="photo-compare-label">Aktuell · ${escapeHtml(latest.date||'')}</span></div></div>`;
+    }else compare.innerHTML='';
+    const newest=[...photos].reverse();
+    list.innerHTML=`<h3 style="margin:14px 0 6px">Verlauf</h3><div class="photo-diary-grid">${newest.map(p=>`<div class="photo-diary-item"><img src="${p.image}" alt="Fortschrittsfoto vom ${escapeHtml(p.date||'')}"><div class="photo-diary-meta"><div class="photo-diary-date">${escapeHtml(p.date||'Ohne Datum')}</div>${p.note?`<div class="photo-diary-note">${escapeHtml(p.note)}</div>`:''}</div><button type="button" data-delete-body-photo="${p.id}">Löschen</button></div>`).join('')}</div>`;
+    list.querySelectorAll('[data-delete-body-photo]').forEach(btn=>btn.onclick=async()=>{
+      if(!confirm('Dieses Fortschrittsfoto wirklich loeschen?')) return;
+      await deleteBodyPhotoRecord(+btn.dataset.deleteBodyPhoto);
+      renderPhotoDiary();
+    });
+  }catch(err){
+    list.innerHTML='<div class="photo-diary-empty">Das Foto-Tagebuch konnte auf diesem Gerät nicht geladen werden.</div>';
+    console.error(err);
+  }
+}
+
+const bodyPhotoInput=document.getElementById('bodyPhotoInput');
+if(bodyPhotoInput) bodyPhotoInput.onchange=async e=>{
+  const file=e.target.files&&e.target.files[0];
+  if(!file) return;
+  const status=document.getElementById('bodyPhotoStatus');
+  status.textContent='Foto wird vorbereitet ...';
+  try{
+    pendingBodyPhoto=await compressBodyPhoto(file);
+    const preview=document.getElementById('bodyPhotoPreview');
+    preview.src=pendingBodyPhoto;preview.style.display='block';
+    status.textContent='Foto bereit zum Speichern.';
+  }catch(err){
+    clearBodyPhotoSelection();
+    status.textContent='Foto konnte nicht verarbeitet werden.';
+  }
+};
+const clearBodyPhoto=document.getElementById('clearBodyPhoto');
+if(clearBodyPhoto) clearBodyPhoto.onclick=()=>{clearBodyPhotoSelection();document.getElementById('bodyPhotoStatus').textContent=''};
+const saveBodyPhoto=document.getElementById('saveBodyPhoto');
+if(saveBodyPhoto) saveBodyPhoto.onclick=async()=>{
+  if(!pendingBodyPhoto) return alert('Bitte zuerst ein Foto auswählen oder aufnehmen.');
+  const date=document.getElementById('bodyPhotoDate').value||todayISO();
+  const note=document.getElementById('bodyPhotoNote').value.trim();
+  const status=document.getElementById('bodyPhotoStatus');
+  status.textContent='Foto wird gespeichert ...';
+  try{
+    await addBodyPhotoRecord({date,note,image:pendingBodyPhoto,createdAt:Date.now()});
+    clearBodyPhotoSelection();
+    document.getElementById('bodyPhotoNote').value='';
+    document.getElementById('bodyPhotoDate').value=todayISO();
+    status.textContent='Foto gespeichert.';
+    await renderPhotoDiary();
+  }catch(err){
+    status.textContent='Speichern fehlgeschlagen. Bitte etwas Speicherplatz freigeben und erneut versuchen.';
+    console.error(err);
+  }
+};
 
 </script>
 </body>
