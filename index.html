@@ -68,8 +68,9 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 .water-goal{padding:6px 10px;border:1px solid var(--border);border-radius:999px;font-size:.82rem;color:var(--muted)}
 .water-main{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;margin-top:12px}
 .water-glasses{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-items:end}
-.water-glass{height:74px;border:3px solid color-mix(in srgb,var(--text) 70%,transparent);border-top-width:4px;border-radius:10px 10px 16px 16px;position:relative;overflow:hidden;opacity:.55;background:color-mix(in srgb,var(--card) 85%,transparent)}
-.water-glass::after{content:'';position:absolute;left:0;right:0;bottom:0;height:var(--fill,0%);background:linear-gradient(180deg,#60a5fa,#2563eb);transition:height .2s ease}
+.water-glass{height:78px;position:relative;overflow:hidden;opacity:.58;background:color-mix(in srgb,var(--card) 82%,transparent);border:3px solid color-mix(in srgb,var(--text) 72%,transparent);clip-path:polygon(7% 0,93% 0,82% 100%,18% 100%);border-radius:5px 5px 18px 18px}
+.water-glass::before{content:'';position:absolute;left:18%;top:8%;width:16%;height:72%;border-radius:999px;background:rgba(255,255,255,.16);z-index:2;pointer-events:none}
+.water-glass::after{content:'';position:absolute;left:0;right:0;bottom:0;height:var(--fill,0%);background:linear-gradient(180deg,#70b7ff,#2f7df4);transition:height .2s ease;z-index:1}
 .water-glass.filled{opacity:1}
 .water-readout{text-align:right;min-width:112px}
 .water-readout .big{color:#60a5fa}
@@ -79,13 +80,23 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 .water-progress{margin-top:10px}
 .water-progress .bar>div{background:#3b82f6}
 @media(max-width:520px){.water-main{grid-template-columns:1fr}.water-readout{text-align:left}.water-glass{height:62px}.water-controls{grid-template-columns:1fr 1fr}.water-controls button:last-child{grid-column:span 2}}
+
+.exercise-tutorial{margin-top:9px;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:color-mix(in srgb,var(--card) 92%,transparent)}
+.exercise-tutorial summary{cursor:pointer;list-style:none;padding:9px 11px;font-weight:650;color:#60a5fa;user-select:none}
+.exercise-tutorial summary::-webkit-details-marker{display:none}
+.exercise-tutorial summary::after{content:'▾';float:right;color:var(--muted);transition:transform .15s ease}
+.exercise-tutorial[open] summary::after{transform:rotate(180deg)}
+.exercise-tutorial-body{padding:0 11px 11px;font-size:.86rem;line-height:1.45}
+.exercise-tutorial-body ol{margin:6px 0 8px;padding-left:20px}
+.exercise-tutorial-body li{margin:4px 0}
+.exercise-tip{padding:8px 9px;border-radius:10px;background:color-mix(in srgb,#3b82f6 10%,transparent);color:var(--muted)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 <div class="wrap">
   <h1>Mein Ernährungs- & Fitnesstracker</h1>
-  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v4.3</span></div>
+  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v4.4</span></div>
 
   
 <div class="card">
@@ -822,6 +833,15 @@ function workoutDay(date=selectedDate){
   if(!data.workoutDays[date]) data.workoutDays[date]={checks:{},completed:false};
   return data.workoutDays[date];
 }
+
+const EXERCISE_TUTORIALS={
+  chairSquat:{steps:['Stell dich etwa hüftbreit vor einen stabilen Stuhl.','Schieb die Hüfte nach hinten und beug die Knie, bis du den Stuhl leicht berührst.','Drück dich über die Füße wieder hoch und streck Hüfte und Knie kontrolliert.'],tip:'Knie folgen der Richtung der Zehen; nicht nach innen einknicken. Rücken lang halten.'},
+  pushup:{steps:['Stütz die Hände etwas breiter als schulterbreit auf Tisch, Arbeitsplatte oder eine stabile erhöhte Fläche.','Halte Kopf, Rücken und Beine möglichst in einer Linie und spann den Bauch an.','Beug die Arme und senk den Brustkorb kontrolliert zur Fläche; anschließend wieder wegdrücken.'],tip:'Nicht ins Hohlkreuz fallen. Je höher die Hände stehen, desto leichter wird die Übung.'},
+  bridge:{steps:['Leg dich auf den Rücken, stell die Füße etwa hüftbreit auf und beug die Knie.','Spann Bauch und Gesäß an und heb das Becken, bis Schultern, Hüfte und Knie ungefähr eine Linie bilden.','Kurz oben halten und das Becken langsam wieder absenken.'],tip:'Die Bewegung kommt aus Hüfte und Gesäß – nicht den unteren Rücken stark überstrecken.'},
+  birdDog:{steps:['Geh in den Vierfüßlerstand: Hände unter den Schultern, Knie unter der Hüfte.','Streck gleichzeitig einen Arm nach vorn und das gegenüberliegende Bein nach hinten.','Kurz stabil halten, kontrolliert zurück und dann die Seite wechseln.'],tip:'Becken möglichst gerade zum Boden halten und nicht zur Seite aufdrehen.'},
+  lunge:{steps:['Stell dich aufrecht hin und mach einen ausreichend großen Schritt nach vorn.','Senk den Körper kontrolliert ab, indem beide Knie gebeugt werden.','Drück dich über den vorderen Fuß wieder hoch. Wenn das unangenehm ist, nutze stattdessen Stuhl-Kniebeugen.'],tip:'Das vordere Knie bleibt ungefähr über dem Fuß und kippt nicht nach innen. Bei Unsicherheit an einer Lehne festhalten.'},
+  plank:{steps:['Stütz dich auf Unterarme und Zehen; für die leichtere Variante die Knie am Boden lassen.','Spann Bauch und Gesäß an und halte Kopf, Rücken und Becken möglichst in einer Linie.','Atme ruhig weiter und beende den Satz, bevor die Haltung deutlich zusammenfällt.'],tip:'Nicht ins Hohlkreuz sinken und die Luft nicht anhalten. Qualität ist wichtiger als eine längere Zeit.'}
+};
 function renderFitness(){
   const wd=workoutDay();
   const root=document.getElementById('workoutList'); root.innerHTML='';
@@ -830,6 +850,14 @@ function renderFitness(){
     const title=document.createElement('div');
     title.innerHTML=`<strong>${ex.name}</strong><div class="small muted">${ex.sets} Sätze · Ziel: ${ex.target}</div>`;
     box.appendChild(title);
+
+    const tut=EXERCISE_TUTORIALS[ex.id];
+    if(tut){
+      const details=document.createElement('details'); details.className='exercise-tutorial';
+      details.innerHTML=`<summary>📖 So geht's</summary><div class="exercise-tutorial-body"><ol>${tut.steps.map(x=>`<li>${x}</li>`).join('')}</ol><div class="exercise-tip"><strong>Darauf achten:</strong> ${tut.tip}</div></div>`;
+      box.appendChild(details);
+    }
+
     for(let s=1;s<=ex.sets;s++){
       const key=ex.id+'_'+s;
       const row=document.createElement('label');
