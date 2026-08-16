@@ -59,6 +59,8 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 .sticky-inner{max-width:900px;margin:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .sticky button{padding:8px 6px;font-size:.82rem}
 @media(max-width:520px){.sticky button span{display:block;font-size:.72rem}.big{font-size:1.45rem}}
+.nav-seven{grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+@media(max-width:520px){.sticky{padding:7px 5px}.nav-seven{gap:3px}.sticky .nav-seven button{min-width:0;padding:7px 1px;font-size:.78rem}.sticky .nav-seven button span{font-size:.56rem;white-space:nowrap;letter-spacing:-.02em}}
 #barcodeReader{min-height:220px;border-radius:14px;overflow:hidden}
 #barcodeReader video{width:100%!important;height:auto!important;object-fit:cover}
 #barcodeReader__scan_region{background:rgba(128,128,128,.10)}
@@ -163,13 +165,30 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 .photo-diary-empty{padding:12px;border:1px dashed var(--border);border-radius:12px;color:var(--muted);margin-top:10px}
 @media(max-width:520px){.photo-diary-grid{grid-template-columns:1fr 1fr}.photo-compare{grid-template-columns:1fr 1fr}}
 
+
+/* v5.5 Onboarding */
+.onboarding-overlay{position:fixed;inset:0;z-index:10000;background:rgba(2,6,12,.78);display:flex;align-items:flex-end;justify-content:center;padding:18px;backdrop-filter:blur(4px)}
+.onboarding-overlay.hidden{display:none}
+.onboarding-card{width:min(560px,100%);background:var(--card);border:1px solid var(--border);border-radius:22px;padding:20px;box-shadow:0 24px 70px rgba(0,0,0,.45);margin-bottom:max(12px,env(safe-area-inset-bottom))}
+.onboarding-kicker{display:flex;justify-content:space-between;gap:12px;align-items:center;color:var(--muted);font-size:.82rem;font-weight:700}
+.onboarding-card h2{font-size:1.35rem;margin:10px 0 8px}
+.onboarding-card p{margin:0;color:var(--muted);line-height:1.45}
+.onboarding-actions{display:grid;grid-template-columns:auto 1fr auto;gap:8px;margin-top:18px}
+.onboarding-actions button{min-height:46px}
+.onboarding-actions .primary{font-weight:800}
+.onboarding-dots{display:flex;gap:5px;justify-content:center;margin-top:14px}
+.onboarding-dot{width:7px;height:7px;border-radius:50%;background:var(--border)}
+.onboarding-dot.active{background:#3b82f6;transform:scale(1.25)}
+.tutorial-target{outline:3px solid #3b82f6!important;outline-offset:4px;border-radius:16px;transition:outline .2s}
+.onboarding-restart{margin-top:10px}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 <div class="wrap">
   <h1>Mein Ernährungs- & Fitnesstracker</h1>
-  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v5.4</span></div>
+  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v5.5</span></div>
 
   
 <div class="card">
@@ -636,6 +655,7 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
         Beim Abnehmen zählt der Trend über mehrere Wochen. Wenn Gewicht, Hunger oder Leistungsfähigkeit nicht zum Ziel passen,
         sollte das Kalorienziel angepasst werden statt immer weiter zu senken.
       </div>
+      <button id="restartOnboarding" class="onboarding-restart" type="button">🎓 Tutorial erneut starten</button>
     </div>
 
     <div class="card" id="photoDiaryCard">
@@ -731,8 +751,22 @@ Gewürze"></textarea>
   </section>
 </div>
 
+<div id="onboardingOverlay" class="onboarding-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+  <div class="onboarding-card">
+    <div class="onboarding-kicker"><span>🎓 Kurze Einführung</span><span id="onboardingProgress">1 / 9</span></div>
+    <h2 id="onboardingTitle">Willkommen</h2>
+    <p id="onboardingText"></p>
+    <div class="onboarding-dots" id="onboardingDots"></div>
+    <div class="onboarding-actions">
+      <button id="onboardingBack" type="button">Zurück</button>
+      <button id="onboardingSkip" type="button">Überspringen</button>
+      <button id="onboardingNext" class="primary" type="button">Weiter →</button>
+    </div>
+  </div>
+</div>
+
 <div class="sticky">
-  <div class="sticky-inner" style="grid-template-columns:repeat(7,minmax(70px,1fr));overflow-x:auto">
+  <div class="sticky-inner nav-seven">
     <button data-view="Today">🍽️<span>Heute</span></button>
     <button data-view="Weight">⚖️<span>Gewicht</span></button>
     <button data-view="Week">📊<span>Woche</span></button>
@@ -759,6 +793,7 @@ const DEFAULTS={
   fitnessXp:0,
   dailyRewards:{},
   streakMilestones:{},
+  onboardingSeen:false,
   exercises:[
     {id:'chairSquat',name:'Stuhl-Kniebeugen',sets:2,target:'8–12 Wdh.'},
     {id:'pushup',name:'Erhöhte Liegestütze',sets:2,target:'6–12 Wdh.'},
@@ -1233,6 +1268,68 @@ function showView(name){
   if(name==='Weight'){document.getElementById('weightDate').value=todayISO()}
 }
 
+// v5.5 - einmaliger Rundgang durch die wichtigsten Funktionen.
+const ONBOARDING_STEPS=[
+  {view:'Today',selector:'#viewToday',title:'Willkommen 👋',text:'Der Tracker verbindet Ernährung, Aktivität, Wasser, Gewicht und Fitness. Ich zeige dir die wichtigsten Bereiche einmal kurz.'},
+  {view:'Today',selector:'#entries',title:'🍽️ Ernährung & Barcode',text:'Unter „Heute“ trägst du Mahlzeiten ein. Über den Barcode-Scanner kannst du Produkte suchen und direkt zu deinem Tag hinzufügen.'},
+  {view:'Today',selector:'.steps-card',title:'👟 Schritte & Aktivität',text:'Trage deine Schritte ein. Der Tracker schätzt Strecke und zusätzlichen Kalorienverbrauch und berücksichtigt ihn beim Tagesbudget.'},
+  {view:'Today',selector:'#waterGlasses',title:'💧 Wasser & Tages-Challenge',text:'Mit +250 ml oder +500 ml führst du dein Wasserziel. Tagesziele und Schritt-Meilensteine bringen zusätzliche EP.'},
+  {view:'Weight',selector:'#viewWeight .card',title:'⚖️ Gewicht',text:'Speichere dein Gewicht regelmäßig. Der Verlauf und die 7-Tage-Werte helfen dabei, echte Trends statt Tagesschwankungen zu sehen.'},
+  {view:'Week',selector:'#viewWeek .card',title:'📊 Woche',text:'Die Wochenansicht fasst deine letzten Tage zusammen und macht Ernährung und Fortschritt leichter vergleichbar.'},
+  {view:'Fitness',selector:'.xp-card',title:'💪 Fitness, EP & Level',text:'Erledigte Sätze und Trainings bringen EP. Du steigst Level auf, schaltest Ränge und Erfolge frei und kannst deinen Fortschritt teilen.'},
+  {view:'Recipes',selector:'#viewRecipes .card',title:'🍳 Rezepte',text:'Speichere eigene Rezepte mit Nährwerten und Foto. Eine Portion lässt sich später mit einem Tipp zum heutigen Tag hinzufügen oder teilen.'},
+  {view:'Profile',selector:'#photoDiaryCard',title:'👤 Profil & Foto-Tagebuch',text:'Im Profil liegen deine persönlichen Startwerte und dein Foto-Tagebuch. Hier kannst du sichtbare Veränderungen über längere Zeit vergleichen.'}
+];
+let onboardingIndex=0;
+let onboardingActive=false;
+let onboardingHighlighted=null;
+
+function clearOnboardingHighlight(){
+  if(onboardingHighlighted){onboardingHighlighted.classList.remove('tutorial-target');onboardingHighlighted=null}
+}
+function renderOnboardingStep(){
+  const overlay=document.getElementById('onboardingOverlay');
+  if(!overlay||!onboardingActive) return;
+  const step=ONBOARDING_STEPS[onboardingIndex];
+  clearOnboardingHighlight();
+  showView(step.view);
+  document.getElementById('onboardingTitle').textContent=step.title;
+  document.getElementById('onboardingText').textContent=step.text;
+  document.getElementById('onboardingProgress').textContent=`${onboardingIndex+1} / ${ONBOARDING_STEPS.length}`;
+  document.getElementById('onboardingBack').disabled=onboardingIndex===0;
+  document.getElementById('onboardingNext').textContent=onboardingIndex===ONBOARDING_STEPS.length-1?'Fertig ✓':'Weiter →';
+  document.getElementById('onboardingDots').innerHTML=ONBOARDING_STEPS.map((_,i)=>`<span class="onboarding-dot ${i===onboardingIndex?'active':''}"></span>`).join('');
+  setTimeout(()=>{
+    const target=document.querySelector(step.selector);
+    if(target){
+      onboardingHighlighted=target;target.classList.add('tutorial-target');
+      target.scrollIntoView({behavior:'smooth',block:'center'});
+    }
+  },80);
+}
+function startOnboarding(force=false){
+  if(!force&&data.onboardingSeen) return;
+  const overlay=document.getElementById('onboardingOverlay');
+  if(!overlay) return;
+  onboardingIndex=0;onboardingActive=true;overlay.classList.remove('hidden');
+  renderOnboardingStep();
+}
+function finishOnboarding(markSeen=true){
+  clearOnboardingHighlight();
+  onboardingActive=false;
+  const overlay=document.getElementById('onboardingOverlay');
+  if(overlay) overlay.classList.add('hidden');
+  if(markSeen){data.onboardingSeen=true;save()}
+  showView('Today');window.scrollTo({top:0,behavior:'smooth'});
+}
+document.getElementById('onboardingBack').onclick=()=>{if(onboardingIndex>0){onboardingIndex--;renderOnboardingStep()}};
+document.getElementById('onboardingNext').onclick=()=>{
+  if(onboardingIndex>=ONBOARDING_STEPS.length-1){finishOnboarding(true);return}
+  onboardingIndex++;renderOnboardingStep();
+};
+document.getElementById('onboardingSkip').onclick=()=>finishOnboarding(true);
+document.getElementById('restartOnboarding').onclick=()=>startOnboarding(true);
+
 document.getElementById('datePicker').onchange=e=>{selectedDate=e.target.value||todayISO();renderToday()};
 document.getElementById('goalCal').oninput=e=>{data.goalCal=+e.target.value||2100;save();renderToday()};
 document.getElementById('goalProt').oninput=e=>{data.goalProt=+e.target.value||135;save();renderToday()};
@@ -1656,6 +1753,7 @@ document.getElementById('saveProfile').onclick=()=>{
   }
   save();renderAll();showView('Today');
   alert(`Profil gespeichert. Startziel: ${r.target} kcal und ${r.protein} g Protein pro Tag.`);
+  if(!data.onboardingSeen) setTimeout(()=>startOnboarding(),250);
 };
 document.getElementById('recalcProfile').onclick=()=>{
   const p=readProfileForm();
@@ -1977,6 +2075,7 @@ document.getElementById('resetAll').onclick=()=>{
 
 document.getElementById('weightDate').value=todayISO();
 showView('Today');renderAll();
+if(data.profile?.configured && !data.onboardingSeen){setTimeout(()=>startOnboarding(),700)}
 
 if ('serviceWorker' in navigator) {
   let updateReloaded = false;
