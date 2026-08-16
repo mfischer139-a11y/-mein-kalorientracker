@@ -817,6 +817,7 @@ const DEFAULTS={
   weights:[],
   profile:{name:'',sex:'male',age:'',height:'',weight:'',activity:1.5,goal:'lose',pace:500,configured:false},
   recentMeals:[],
+  learnedProducts:[],
   recipes:[],
   adaptive:{lastSuggestion:null},
   workoutDays:{},
@@ -854,7 +855,7 @@ function load(){
     const x=JSON.parse(localStorage.getItem(KEY));
     if(!x) return structuredClone(DEFAULTS);
     return {...structuredClone(DEFAULTS),...x,
-      days:x.days||{},weights:x.weights||[],favorites:x.favorites||structuredClone(DEFAULTS.favorites),profile:x.profile||structuredClone(DEFAULTS.profile),recentMeals:x.recentMeals||[],recipes:x.recipes||[],adaptive:x.adaptive||structuredClone(DEFAULTS.adaptive),workoutDays:x.workoutDays||{},workoutHistory:x.workoutHistory||[],fitnessXp:+x.fitnessXp||0,dailyRewards:x.dailyRewards||{},streakMilestones:x.streakMilestones||{},exercises:x.exercises||structuredClone(DEFAULTS.exercises)};
+      days:x.days||{},weights:x.weights||[],favorites:x.favorites||structuredClone(DEFAULTS.favorites),profile:x.profile||structuredClone(DEFAULTS.profile),recentMeals:x.recentMeals||[],learnedProducts:x.learnedProducts||[],recipes:x.recipes||[],adaptive:x.adaptive||structuredClone(DEFAULTS.adaptive),workoutDays:x.workoutDays||{},workoutHistory:x.workoutHistory||[],fitnessXp:+x.fitnessXp||0,dailyRewards:x.dailyRewards||{},streakMilestones:x.streakMilestones||{},exercises:x.exercises||structuredClone(DEFAULTS.exercises)};
   }catch{return structuredClone(DEFAULTS)}
 }
 function save(){localStorage.setItem(KEY,JSON.stringify(data))}
@@ -1418,13 +1419,50 @@ const FOOD_ESTIMATES=[
 ];
 let foodEstimateTimer=null,foodFieldsManual=false;
 function normFoodText(v){return String(v||'').toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss')}
+function rememberScannedProduct(product){
+  if(!product||!product.name) return;
+  const kcal=Number(product.kcal100),prot=Number(product.prot100);
+  if(!Number.isFinite(kcal)||!Number.isFinite(prot)||(kcal<=0&&prot<=0)) return;
+  if(!Array.isArray(data.learnedProducts)) data.learnedProducts=[];
+  const key=normFoodText(product.name).trim(),code=String(product.code||'');
+  const learned={code,name:product.name,brand:product.brand||'',kcal100:round1(kcal),prot100:round1(prot),updatedAt:Date.now()};
+  data.learnedProducts=data.learnedProducts.filter(x=>{
+    if(code&&String(x.code||'')===code) return false;
+    return normFoodText(x.name).trim()!==key;
+  });
+  data.learnedProducts.unshift(learned);
+  data.learnedProducts=data.learnedProducts.slice(0,250);
+  save();
+}
+function findLearnedProduct(query){
+  const n=normFoodText(query).trim();
+  if(!n||!Array.isArray(data.learnedProducts)) return null;
+  const exact=data.learnedProducts.find(x=>normFoodText(x.name).trim()===n);
+  if(exact) return exact;
+  const branded=data.learnedProducts.find(x=>{
+    const name=normFoodText(x.name),brand=normFoodText(x.brand);
+    return (name&&n.includes(name))||(name&&name.includes(n))||(brand&&n.includes(brand+' '+name));
+  });
+  return branded||null;
+}
 function estimateFoodNow(force=false){
   const nameEl=document.getElementById('foodName'),amountEl=document.getElementById('foodAmount'),calEl=document.getElementById('foodCal'),protEl=document.getElementById('foodProt'),hint=document.getElementById('foodEstimateHint');
   if(!nameEl||!calEl||!protEl) return;
   const raw=nameEl.value.trim(); if(!raw){if(hint) hint.innerHTML='✨ <strong>Schnellschätzung:</strong> Name und optional Menge eingeben.';return}
   if(foodFieldsManual&&!force) return;
   const n=normFoodText(raw);
-  // Zuerst eigene Favoriten/gemerkte Mahlzeiten bevorzugen.
+  // Zuerst aus Barcode-Scans gelernte Produkte nutzen.
+  const learned=findLearnedProduct(raw);
+  if(learned){
+    let amount=parseFloat(amountEl?.value||'');
+    if(!amount){amount=100;if(amountEl) amountEl.value=100}
+    const f=amount/100,cal=learned.kcal100*f,prot=learned.prot100*f;
+    calEl.value=Math.round(cal);protEl.value=round1(prot);foodFieldsManual=false;
+    const brand=learned.brand?` · ${learned.brand}`:'';
+    if(hint) hint.innerHTML=`📦 Aus deinen Barcode-Scans gelernt: <strong>${learned.name}</strong>${brand} (${Math.round(amount)} g) → <strong>${Math.round(cal)} kcal · ${round1(prot)} g Protein</strong>.`;
+    return;
+  }
+  // Danach eigene Favoriten/gemerkte Mahlzeiten bevorzugen.
   const personal=[...(data.favorites||[]),...(data.recentMeals||[])].find(x=>n.includes(normFoodText(x.name))||normFoodText(x.name).includes(n));
   if(personal){
     calEl.value=Math.round(+personal.cal||0);protEl.value=round1(+personal.prot||0);
@@ -2010,11 +2048,12 @@ async function lookupBarcodeCode(code){
       kcal100:kcal,
       prot100:prot
     };
+    rememberScannedProduct(barcodeProduct);
     document.getElementById('barcodeProductName').textContent=barcodeProduct.name;
     document.getElementById('barcodeProductBrand').textContent=barcodeProduct.brand;
     recalcBarcodeResult();
     document.getElementById('barcodeResult').classList.remove('hidden');
-    status.textContent='Produkt gefunden. Bitte Menge prüfen.';
+    status.textContent='Produkt gefunden und für spätere Schnellschätzungen gemerkt. Bitte Menge prüfen.';
   }catch(err){
     barcodeProduct=null;
     status.textContent='Nicht gefunden oder keine Nährwerte vorhanden. Du kannst das Produkt weiterhin manuell eintragen.';
