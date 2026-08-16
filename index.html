@@ -140,6 +140,9 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 .daily-claim[disabled]{opacity:.55;cursor:default}
 .daily-rule{margin-top:9px;color:var(--muted);font-size:.82rem;line-height:1.35}
 
+
+.steps-card{border-color:#334155}.steps-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.steps-pill{background:#172554;border:1px solid #1d4ed8;border-radius:999px;padding:7px 10px;font-weight:800;white-space:nowrap}.steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.steps-stat{background:#0b1220;border:1px solid #243047;border-radius:12px;padding:10px;text-align:center}.steps-stat strong{display:block;font-size:20px}.steps-controls{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:12px}.steps-controls input{margin:0}.steps-note{margin-top:9px;font-size:12px;color:var(--muted)}
+@media(max-width:560px){.steps-grid{grid-template-columns:1fr 1fr}.steps-stat:last-child{grid-column:1/-1}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
@@ -181,8 +184,8 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
     </div>
 
     <div class="grid four">
-      <div class="metric"><div class="muted small">Kalorien</div><div class="big" id="totalCal">0</div><div class="small muted">kcal</div></div>
-      <div class="metric"><div class="muted small">Übrig</div><div class="big" id="remainingCal">2100</div><div class="small muted">kcal</div></div>
+      <div class="metric"><div class="muted small">Gegessen</div><div class="big" id="totalCal">0</div><div class="small muted">kcal</div></div>
+      <div class="metric"><div class="muted small">Übrig inkl. Schritte</div><div class="big" id="remainingCal">2100</div><div class="small muted">kcal</div></div>
       <div class="metric"><div class="muted small">Protein</div><div class="big" id="totalProt">0</div><div class="small muted">g</div></div>
       <div class="metric"><div class="muted small">Einträge</div><div class="big" id="entryCount">0</div><div class="small muted">heute</div></div>
     </div>
@@ -197,6 +200,14 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
       <div class="small" style="margin-top:8px">Protein <span id="protPct"></span></div><div class="bar"><div id="protBar"></div></div>
     </div>
 
+
+    <div class="card steps-card">
+      <div class="steps-head"><div><h2 style="margin-bottom:4px">👟 Schritte & Aktivität</h2><div class="small muted">Manuell eintragen. Der zusätzliche Verbrauch wird konservativ geschätzt und zu deinem Tagesbudget gerechnet.</div></div><div class="steps-pill"><span id="stepsToday">0</span> Schritte</div></div>
+      <div class="steps-grid"><div class="steps-stat"><span class="small muted">Geschätzt verbrannt</span><strong id="stepsCalories">0</strong><span class="small muted">kcal</span></div><div class="steps-stat"><span class="small muted">Strecke</span><strong id="stepsDistance">0,0</strong><span class="small muted">km</span></div><div class="steps-stat"><span class="small muted">Tagesbudget</span><strong id="stepsBudget">2100</strong><span class="small muted">kcal</span></div></div>
+      <div class="steps-controls"><input id="stepsInput" type="number" min="0" max="100000" step="100" inputmode="numeric" placeholder="z. B. 7500"><button id="saveSteps" class="primary" type="button">Schritte speichern</button></div>
+      <div class="actions" style="margin-top:8px"><button id="stepsPlus1000" type="button">+ 1.000</button><button id="stepsMinus1000" type="button">− 1.000</button></div>
+      <div class="steps-note">Die Schätzung nutzt dein Profilgewicht (falls vorhanden). Sie ist ein Richtwert, kein medizinisch genauer Messwert. Automatische Schrittübernahme kann später ergänzt werden.</div>
+    </div>
 
     <div class="card water-card">
       <div class="water-head">
@@ -722,8 +733,9 @@ function load(){
 }
 function save(){localStorage.setItem(KEY,JSON.stringify(data))}
 function day(date=selectedDate){
-  if(!data.days[date]) data.days[date]={entries:[],waterMl:0};
+  if(!data.days[date]) data.days[date]={entries:[],waterMl:0,steps:0};
   if(typeof data.days[date].waterMl!=='number') data.days[date].waterMl=0;
+  if(typeof data.days[date].steps!=='number') data.days[date].steps=0;
   return data.days[date];
 }
 function fmtDate(iso){
@@ -740,8 +752,9 @@ function renderToday(){
   document.getElementById('goalCal').value=data.goalCal;
   document.getElementById('goalProt').value=data.goalProt;
   const entries=day().entries, s=sumEntries(entries);
+  const stepBurn=estimatedStepCalories(day().steps||0);
   document.getElementById('totalCal').textContent=Math.round(s.cal);
-  document.getElementById('remainingCal').textContent=Math.round(data.goalCal-s.cal);
+  document.getElementById('remainingCal').textContent=Math.round(data.goalCal+stepBurn-s.cal);
   document.getElementById('totalProt').textContent=round1(s.prot);
   document.getElementById('entryCount').textContent=entries.length;
   const cp=Math.round(s.cal/data.goalCal*100), pp=Math.round(s.prot/data.goalProt*100);
@@ -750,6 +763,7 @@ function renderToday(){
   document.getElementById('calBar').style.width=Math.min(cp,100)+'%';
   document.getElementById('protBar').style.width=Math.min(pp,100)+'%';
 
+  renderSteps();
   renderWater();
   renderDailyChallenge();
 
@@ -818,6 +832,34 @@ function addEntry(e){
   rememberMeal(e);
   save();renderAll();
 }
+function estimatedStepCalories(steps){
+  steps=Math.max(0,+steps||0);
+  const weight=Math.max(45,Math.min(180,+data.profile?.weight||75));
+  // conservative walking estimate: about 0.0005 kcal per kg per step
+  return Math.round(steps*weight*0.0005);
+}
+function estimatedStepDistance(steps){
+  const height=Math.max(140,Math.min(210,+data.profile?.height||175));
+  const strideM=height*0.00414;
+  return Math.max(0,+steps||0)*strideM/1000;
+}
+function renderSteps(){
+  const d=day(), steps=Math.max(0,Math.round(+d.steps||0));
+  const burn=estimatedStepCalories(steps);
+  document.getElementById('stepsToday').textContent=steps.toLocaleString('de-DE');
+  document.getElementById('stepsCalories').textContent=burn;
+  document.getElementById('stepsDistance').textContent=estimatedStepDistance(steps).toLocaleString('de-DE',{minimumFractionDigits:1,maximumFractionDigits:1});
+  document.getElementById('stepsBudget').textContent=Math.round((+data.goalCal||2100)+burn);
+  document.getElementById('stepsInput').value=steps||'';
+}
+function setSteps(value){
+  day().steps=Math.max(0,Math.min(100000,Math.round(+value||0)));
+  save();renderToday();
+}
+document.getElementById('saveSteps').onclick=()=>setSteps(document.getElementById('stepsInput').value);
+document.getElementById('stepsPlus1000').onclick=()=>setSteps((day().steps||0)+1000);
+document.getElementById('stepsMinus1000').onclick=()=>setSteps((day().steps||0)-1000);
+
 function renderWater(){
   const d=day();
   const goal=2500;
