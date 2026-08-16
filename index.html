@@ -166,7 +166,7 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 @media(max-width:520px){.photo-diary-grid{grid-template-columns:1fr 1fr}.photo-compare{grid-template-columns:1fr 1fr}}
 
 
-/* v5.5 Onboarding */
+/* v5.5.1 Onboarding */
 .onboarding-overlay{position:fixed;inset:0;z-index:10000;background:rgba(2,6,12,.78);display:flex;align-items:flex-end;justify-content:center;padding:18px;backdrop-filter:blur(4px)}
 .onboarding-overlay.hidden{display:none}
 .onboarding-card{width:min(560px,100%);background:var(--card);border:1px solid var(--border);border-radius:22px;padding:20px;box-shadow:0 24px 70px rgba(0,0,0,.45);margin-bottom:max(12px,env(safe-area-inset-bottom))}
@@ -188,7 +188,7 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 <body>
 <div class="wrap">
   <h1>Mein Ernährungs- & Fitnesstracker</h1>
-  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v5.5</span></div>
+  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v5.5.1</span></div>
 
   
 <div class="card">
@@ -1268,7 +1268,7 @@ function showView(name){
   if(name==='Weight'){document.getElementById('weightDate').value=todayISO()}
 }
 
-// v5.5 - einmaliger Rundgang durch die wichtigsten Funktionen.
+// v5.5.1 - einmaliger Rundgang durch die wichtigsten Funktionen.
 const ONBOARDING_STEPS=[
   {view:'Today',selector:'#viewToday',title:'Willkommen 👋',text:'Der Tracker verbindet Ernährung, Aktivität, Wasser, Gewicht und Fitness. Ich zeige dir die wichtigsten Bereiche einmal kurz.'},
   {view:'Today',selector:'#entries',title:'🍽️ Ernährung & Barcode',text:'Unter „Heute“ trägst du Mahlzeiten ein. Über den Barcode-Scanner kannst du Produkte suchen und direkt zu deinem Tag hinzufügen.'},
@@ -2119,29 +2119,52 @@ const PHOTO_DB_NAME='mein_fitnesstracker_fototagebuch_v1';
 const PHOTO_STORE='photos';
 let pendingBodyPhoto='';
 
+function createPhotoStore(db){
+  if(!db.objectStoreNames.contains(PHOTO_STORE)){
+    const store=db.createObjectStore(PHOTO_STORE,{keyPath:'id',autoIncrement:true});
+    store.createIndex('date','date',{unique:false});
+  }
+}
 function openPhotoDiaryDb(){
   return new Promise((resolve,reject)=>{
-    const req=indexedDB.open(PHOTO_DB_NAME,1);
-    req.onupgradeneeded=()=>{
+    if(!('indexedDB' in window)){reject(new Error('IndexedDB nicht verfügbar'));return}
+    const req=indexedDB.open(PHOTO_DB_NAME);
+    req.onupgradeneeded=()=>createPhotoStore(req.result);
+    req.onerror=()=>reject(req.error||new Error('Foto-Datenbank konnte nicht geöffnet werden'));
+    req.onblocked=()=>console.warn('Foto-Datenbank wartet auf eine ältere App-Instanz.');
+    req.onsuccess=()=>{
       const db=req.result;
-      if(!db.objectStoreNames.contains(PHOTO_STORE)){
-        const store=db.createObjectStore(PHOTO_STORE,{keyPath:'id',autoIncrement:true});
-        store.createIndex('date','date',{unique:false});
-      }
+      db.onversionchange=()=>db.close();
+      if(db.objectStoreNames.contains(PHOTO_STORE)){resolve(db);return}
+      // Selbstheilung: Falls Safari eine leere/unterbrochene DB angelegt hat,
+      // Version erhöhen und den fehlenden Store nachträglich erzeugen.
+      const nextVersion=Math.max(1,db.version+1);
+      db.close();
+      const repair=indexedDB.open(PHOTO_DB_NAME,nextVersion);
+      repair.onupgradeneeded=()=>createPhotoStore(repair.result);
+      repair.onerror=()=>reject(repair.error||new Error('Foto-Datenbank konnte nicht repariert werden'));
+      repair.onblocked=()=>console.warn('Reparatur der Foto-Datenbank ist blockiert. App kurz schließen und erneut öffnen.');
+      repair.onsuccess=()=>{
+        const repaired=repair.result;
+        repaired.onversionchange=()=>repaired.close();
+        resolve(repaired);
+      };
     };
-    req.onsuccess=()=>resolve(req.result);
-    req.onerror=()=>reject(req.error);
   });
 }
 function photoDbRequest(mode,action){
   return openPhotoDiaryDb().then(db=>new Promise((resolve,reject)=>{
-    const tx=db.transaction(PHOTO_STORE,mode);
-    const store=tx.objectStore(PHOTO_STORE);
-    let req;
-    try{req=action(store)}catch(err){db.close();reject(err);return}
-    req.onsuccess=()=>resolve(req.result);
-    req.onerror=()=>reject(req.error);
-    tx.oncomplete=()=>db.close();
+    let tx,store,req,result;
+    try{
+      tx=db.transaction(PHOTO_STORE,mode);
+      store=tx.objectStore(PHOTO_STORE);
+      req=action(store);
+    }catch(err){db.close();reject(err);return}
+    req.onsuccess=()=>{result=req.result};
+    req.onerror=()=>reject(req.error||new Error('Foto-Datenbankfehler'));
+    tx.oncomplete=()=>{db.close();resolve(result)};
+    tx.onerror=()=>{const err=tx.error||new Error('Foto-Transaktion fehlgeschlagen');db.close();reject(err)};
+    tx.onabort=()=>{const err=tx.error||new Error('Foto-Transaktion abgebrochen');db.close();reject(err)};
   }));
 }
 function getBodyPhotos(){
@@ -2204,8 +2227,11 @@ async function renderPhotoDiary(){
       renderPhotoDiary();
     });
   }catch(err){
-    list.innerHTML='<div class="photo-diary-empty">Das Foto-Tagebuch konnte auf diesem Gerät nicht geladen werden.</div>';
-    console.error(err);
+    compare.innerHTML='';
+    list.innerHTML='<div class="photo-diary-empty">Das Foto-Tagebuch konnte gerade nicht geladen werden.<br><button type="button" id="retryPhotoDiary" style="margin-top:10px">Erneut versuchen</button></div>';
+    const retry=document.getElementById('retryPhotoDiary');
+    if(retry) retry.onclick=()=>renderPhotoDiary();
+    console.error('Foto-Tagebuch:',err);
   }
 }
 
