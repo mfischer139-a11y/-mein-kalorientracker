@@ -81,6 +81,15 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 
 
 .xp-card{position:relative;overflow:hidden}
+.rank-pill{display:inline-flex;align-items:center;gap:6px;margin-top:4px;padding:5px 9px;border:1px solid var(--border);border-radius:999px;font-size:.8rem;font-weight:750}
+.badge-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}
+.achievement{padding:10px;border:1px solid var(--border);border-radius:12px;display:flex;gap:9px;align-items:center}
+.achievement.locked{opacity:.38;filter:grayscale(1)}
+.achievement-icon{font-size:1.35rem;min-width:30px;text-align:center}
+.achievement strong{display:block;font-size:.86rem}
+.achievement span{font-size:.74rem;color:var(--muted)}
+@media(max-width:520px){.badge-grid{grid-template-columns:1fr}}
+
 .xp-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .xp-level{display:flex;align-items:center;gap:10px}
 .xp-level-badge{width:54px;height:54px;border-radius:16px;display:grid;place-items:center;font-size:1.35rem;font-weight:800;border:1px solid #3b82f6;background:rgba(59,130,246,.12);color:#60a5fa}
@@ -121,7 +130,7 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 <body>
 <div class="wrap">
   <h1>Mein Ernährungs- & Fitnesstracker</h1>
-  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v4.7</span></div>
+  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v4.8</span></div>
 
   
 <div class="card">
@@ -427,7 +436,7 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
           <div>
             <div class="small muted">Fitness-Level</div>
             <div class="big" id="fitnessLevelText">Level 1</div>
-            <div class="xp-total"><span id="fitnessXpTotal">0</span> EP gesamt</div>
+            <div class="xp-total"><span id="fitnessXpTotal">0</span> EP gesamt</div><div class="rank-pill" id="fitnessRank">Noch kein Rang</div>
           </div>
         </div>
         <button id="shareFitnessProgress" type="button">↗️ Fortschritt teilen</button>
@@ -443,6 +452,12 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
         <div class="xp-rule"><strong id="fitnessCompletedCount">0</strong><br><span class="small muted">Trainings abgeschlossen</span></div>
       </div>
       <div class="small muted" style="margin-top:10px">EP werden pro Satz und Tag nur einmal vergeben – erneutes Abhaken bringt keine zusätzlichen Punkte.</div>
+    </div>
+
+    <div class="card">
+      <h2>🏅 Erfolge</h2>
+      <div class="small muted">Badges werden automatisch freigeschaltet. Der erste Fitness-Rang wartet ab Level 5 auf dich.</div>
+      <div id="fitnessAchievements" class="badge-grid"></div>
     </div>
 
     <div class="card">
@@ -1074,26 +1089,60 @@ const XP_PER_SET=10;
 const XP_WORKOUT_BONUS=25;
 const XP_PER_LEVEL=250;
 
+const FITNESS_RANKS=[
+  {level:100,name:'Legende',icon:'👑'},
+  {level:80,name:'Elite',icon:'🏆'},
+  {level:65,name:'Champion',icon:'⚡'},
+  {level:50,name:'Leistungsträger',icon:'🥇'},
+  {level:40,name:'Fortgeschritten',icon:'🥈'},
+  {level:30,name:'Athlet',icon:'🥉'},
+  {level:20,name:'Aktiv',icon:'💪'},
+  {level:10,name:'Dranbleiber',icon:'🔥'},
+  {level:5,name:'Einsteiger',icon:'🌱'}
+];
+const FITNESS_ACHIEVEMENTS=[
+  {icon:'🎬',name:'Losgelegt',desc:'Erstes Training abgeschlossen',test:(xp,t)=>t>=1},
+  {icon:'⭐',name:'500 EP',desc:'500 Erfahrungspunkte gesammelt',test:(xp,t)=>xp>=500},
+  {icon:'🔥',name:'Dranbleiber',desc:'5 Trainings abgeschlossen',test:(xp,t)=>t>=5},
+  {icon:'💪',name:'10 Trainings',desc:'Zweistellig trainiert',test:(xp,t)=>t>=10},
+  {icon:'🏅',name:'2.500 EP',desc:'2.500 Erfahrungspunkte gesammelt',test:(xp,t)=>xp>=2500},
+  {icon:'🏆',name:'25 Trainings',desc:'25 Trainings abgeschlossen',test:(xp,t)=>t>=25},
+  {icon:'⚡',name:'50 Trainings',desc:'50 Trainings abgeschlossen',test:(xp,t)=>t>=50},
+  {icon:'👑',name:'100 Trainings',desc:'100 Trainings abgeschlossen',test:(xp,t)=>t>=100}
+];
+function fitnessRank(level){ return FITNESS_RANKS.find(r=>level>=r.level)||null; }
 function fitnessLevelInfo(){
   const xp=Math.max(0,+data.fitnessXp||0);
   const level=Math.floor(xp/XP_PER_LEVEL)+1;
   const current=xp%XP_PER_LEVEL;
-  return {xp,level,current,next:XP_PER_LEVEL-current,pct:Math.round(current/XP_PER_LEVEL*100)};
+  return {xp,level,current,next:XP_PER_LEVEL-current,pct:Math.round(current/XP_PER_LEVEL*100),rank:fitnessRank(level)};
 }
-
+function announceFitnessMilestone(oldXp,newXp){
+  const oldLevel=Math.floor(oldXp/XP_PER_LEVEL)+1, newLevel=Math.floor(newXp/XP_PER_LEVEL)+1;
+  if(newLevel<=oldLevel) return;
+  const oldRank=fitnessRank(oldLevel), newRank=fitnessRank(newLevel);
+  setTimeout(()=>{
+    if((newRank?.name||'')!==(oldRank?.name||'')) alert(`🏆 NEUER RANG!\n\nLevel ${newLevel} erreicht\n${newRank.icon} ${newRank.name}\n\nWeiter so! 💪🏼`);
+    else alert(`🎉 LEVEL UP!\n\nLevel ${newLevel} erreicht!\nWeiter so! 💪🏼`);
+  },80);
+}
 function awardFitnessXp(amount){
-  data.fitnessXp=Math.max(0,(+data.fitnessXp||0)+amount);
+  const oldXp=Math.max(0,+data.fitnessXp||0);
+  data.fitnessXp=Math.max(0,oldXp+amount);
+  announceFitnessMilestone(oldXp,data.fitnessXp);
 }
-
 function renderFitnessXp(){
-  const info=fitnessLevelInfo();
+  const info=fitnessLevelInfo(), trainings=(data.workoutHistory||[]).length;
   document.getElementById('fitnessLevelBadge').textContent=info.level;
   document.getElementById('fitnessLevelText').textContent='Level '+info.level;
   document.getElementById('fitnessXpTotal').textContent=info.xp;
+  document.getElementById('fitnessRank').textContent=info.rank?`${info.rank.icon} ${info.rank.name}`:'🔒 Erster Rang ab Level 5';
   document.getElementById('fitnessXpBar').style.width=Math.min(info.pct,100)+'%';
   document.getElementById('fitnessXpProgress').textContent=`${info.current} / ${XP_PER_LEVEL} EP`;
   document.getElementById('fitnessXpToNext').textContent=`Noch ${info.next} EP bis Level ${info.level+1}`;
-  document.getElementById('fitnessCompletedCount').textContent=(data.workoutHistory||[]).length;
+  document.getElementById('fitnessCompletedCount').textContent=trainings;
+  const root=document.getElementById('fitnessAchievements');
+  root.innerHTML=FITNESS_ACHIEVEMENTS.map(a=>{const ok=a.test(info.xp,trainings);return `<div class="achievement ${ok?'':'locked'}"><div class="achievement-icon">${ok?a.icon:'🔒'}</div><div><strong>${a.name}</strong><span>${a.desc}</span></div></div>`}).join('');
 }
 
 const EXERCISE_TUTORIALS={
@@ -1190,7 +1239,10 @@ document.getElementById('resetWorkout').onclick=()=>{
 document.getElementById('shareFitnessProgress').onclick=async()=>{
   const info=fitnessLevelInfo();
   const trainings=(data.workoutHistory||[]).length;
-  const text=`💪 Mein Fitness-Fortschritt\nLevel ${info.level} · ${info.xp} EP\n${trainings} Training${trainings===1?'':'s'} abgeschlossen\nNoch ${info.next} EP bis Level ${info.level+1}.\n\nWer sammelt diese Woche mehr EP? 😄`;
+  const rank=info.rank?`${info.rank.icon} ${info.rank.name}`:'Noch kein Rang';
+  const badges=FITNESS_ACHIEVEMENTS.filter(a=>a.test(info.xp,trainings)).length;
+  const blocks=Math.round(info.pct/10), bar='█'.repeat(blocks)+'░'.repeat(10-blocks);
+  const text=`💪 MEIN FITNESS-FORTSCHRITT\n\n🏆 Level ${info.level} · ${rank}\n⭐ ${info.xp} EP\n🔥 ${trainings} Training${trainings===1?'':'s'} abgeschlossen\n🏅 ${badges} Erfolge\n\nNächstes Level:\n${bar} ${info.pct}%\nNoch ${info.next} EP bis Level ${info.level+1}.\n\nWer sammelt diese Woche mehr EP? 😄`;
   try{
     if(navigator.share){
       await navigator.share({title:'Mein Fitness-Fortschritt',text});
