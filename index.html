@@ -130,7 +130,7 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 <body>
 <div class="wrap">
   <h1>Mein Ernährungs- & Fitnesstracker</h1>
-  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v4.8</span></div>
+  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v4.9</span></div>
 
   
 <div class="card">
@@ -724,12 +724,40 @@ function renderToday(){
     const fav=document.createElement('button'); fav.textContent='⭐';
     fav.title='Zu Favoriten hinzufügen';
     fav.onclick=()=>addFavoriteFromMeal(e);
+    const edit=document.createElement('button');edit.textContent='✏️ Bearbeiten';
+    edit.title='Eintrag bearbeiten';
+    edit.onclick=()=>editEntry(i);
     const b=document.createElement('button');b.textContent='Löschen';
     b.onclick=()=>{entries.splice(i,1);save();renderAll()};
-    actions.append(fav,b);
+    actions.append(fav,edit,b);
     r.append(left,actions);el.appendChild(r);
   });
 }
+function editEntry(index){
+  const entries=day().entries;
+  const e=entries[index];
+  if(!e) return;
+  const name=prompt('Lebensmittel / Mahlzeit bearbeiten:',e.name||'');
+  if(name===null) return;
+  const cleanName=name.trim();
+  if(!cleanName) return alert('Der Name darf nicht leer sein.');
+  const calRaw=prompt('Kalorien bearbeiten:',String(+e.cal||0));
+  if(calRaw===null) return;
+  const cal=Number(String(calRaw).replace(',','.'));
+  if(!Number.isFinite(cal)||cal<0) return alert('Bitte gültige Kalorien eingeben.');
+  const protRaw=prompt('Protein in g bearbeiten:',String(+e.prot||0));
+  if(protRaw===null) return;
+  const prot=Number(String(protRaw).replace(',','.'));
+  if(!Number.isFinite(prot)||prot<0) return alert('Bitte gültiges Protein eingeben.');
+  const choices=['Frühstück','Mittag','Abendessen','Nachtisch','Snack'];
+  const mealRaw=prompt('Mahlzeit bearbeiten: '+choices.join(' / '),e.meal||'Snack');
+  if(mealRaw===null) return;
+  const meal=mealRaw.trim()||'Snack';
+  entries[index]={...e,name:cleanName,cal,prot,meal,editedAt:Date.now()};
+  rememberMeal(entries[index]);
+  save();renderAll();
+}
+
 function rememberMeal(e){
   const key=(e.name||'').trim().toLowerCase();
   if(!key) return;
