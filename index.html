@@ -99,13 +99,16 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 .recipe-text{white-space:pre-wrap;line-height:1.45}
 .recipe-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .recipe-empty{padding:12px;border:1px dashed var(--border);border-radius:12px;color:var(--muted)}
+.recipe-photo-preview{display:none;width:100%;max-height:300px;object-fit:cover;border:1px solid var(--border);border-radius:14px;margin-top:8px}
+.recipe-photo{width:100%;max-height:320px;object-fit:cover;border-radius:12px;border:1px solid var(--border);margin:8px 0 4px}
+.recipe-photo-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 <div class="wrap">
   <h1>Mein Ernährungs- & Fitnesstracker</h1>
-  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v4.5</span></div>
+  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v4.6</span></div>
 
   
 <div class="card">
@@ -525,6 +528,14 @@ Gewürze"></textarea>
       <label>Zubereitung
         <textarea id="recipeSteps" rows="6" placeholder="Kurze Schritte zur Zubereitung …"></textarea>
       </label>
+      <label>📷 Foto zum Rezept
+        <input id="recipePhotoInput" type="file" accept="image/*" capture="environment">
+      </label>
+      <img id="recipePhotoPreview" class="recipe-photo-preview" alt="Rezeptfoto Vorschau">
+      <div class="recipe-photo-actions">
+        <button id="removeRecipePhoto" type="button" class="hidden">Foto entfernen</button>
+      </div>
+      <div class="small muted" style="margin:8px 0 10px">Das Foto wird verkleinert auf diesem Gerät gespeichert, damit die App nicht unnötig viel Speicher belegt.</div>
       <button class="primary" id="saveRecipe" type="button">Rezept speichern</button>
     </div>
 
@@ -783,16 +794,30 @@ function recipeShareText(r){
   ];
   return parts.join('\n');
 }
+async function dataUrlToShareFile(dataUrl,name){
+  if(!dataUrl) return null;
+  try{
+    const blob=await (await fetch(dataUrl)).blob();
+    const ext=blob.type==='image/png'?'png':'jpg';
+    const safe=(name||'rezept').replace(/[^a-z0-9äöüß_-]+/gi,'_').slice(0,50)||'rezept';
+    return new File([blob],safe+'.'+ext,{type:blob.type||'image/jpeg'});
+  }catch{return null}
+}
 async function shareRecipe(r){
   const text=recipeShareText(r);
   try{
     if(navigator.share){
-      await navigator.share({title:r.name,text});
+      const file=await dataUrlToShareFile(r.photo,r.name);
+      if(file && navigator.canShare?.({files:[file]})){
+        await navigator.share({title:r.name,text,files:[file]});
+      }else{
+        await navigator.share({title:r.name,text});
+      }
       return;
     }
     if(navigator.clipboard?.writeText){
       await navigator.clipboard.writeText(text);
-      alert('Rezept in die Zwischenablage kopiert.');
+      alert('Rezepttext in die Zwischenablage kopiert.');
       return;
     }
   }catch(err){
@@ -808,12 +833,13 @@ function renderRecipes(){
   if(!list.length){root.innerHTML='<div class="recipe-empty small">Noch keine Rezepte gespeichert.</div>';return}
   list.forEach((r,i)=>{
     const card=document.createElement('div');card.className='recipe-card';
-    card.innerHTML=`<h3>${r.name}</h3>
+    card.innerHTML=`<h3>${escapeHtml(r.name)}</h3>
       <div class="recipe-meta">
         <span class="pill">${r.servings} Portion${r.servings===1?'':'en'}</span>
         <span class="pill">${Math.round(r.cal)} kcal / Portion</span>
         <span class="pill">${round1(r.prot)} g Protein / Portion</span>
       </div>
+      ${r.photo?`<img class="recipe-photo" src="${r.photo}" alt="Foto von ${escapeHtml(r.name)}">`:''}
       <div class="recipe-section"><strong>Zutaten</strong><div class="recipe-text small">${escapeHtml(r.ingredients||'–')}</div></div>
       <div class="recipe-section"><strong>Zubereitung</strong><div class="recipe-text small">${escapeHtml(r.steps||'–')}</div></div>`;
     const actions=document.createElement('div');actions.className='recipe-actions';
@@ -859,6 +885,47 @@ document.getElementById('addWeight').onclick=()=>{
 };
 document.querySelectorAll('.sticky button').forEach(b=>b.onclick=()=>showView(b.dataset.view));
 
+let pendingRecipePhoto='';
+async function compressRecipePhoto(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onerror=reject;
+    reader.onload=()=>{
+      const img=new Image();
+      img.onerror=reject;
+      img.onload=()=>{
+        const maxSide=900;
+        const scale=Math.min(1,maxSide/Math.max(img.width,img.height));
+        const canvas=document.createElement('canvas');
+        canvas.width=Math.max(1,Math.round(img.width*scale));
+        canvas.height=Math.max(1,Math.round(img.height*scale));
+        canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+        resolve(canvas.toDataURL('image/jpeg',0.72));
+      };
+      img.src=reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+const recipePhotoInput=document.getElementById('recipePhotoInput');
+recipePhotoInput.onchange=async e=>{
+  const file=e.target.files?.[0]; if(!file) return;
+  try{
+    pendingRecipePhoto=await compressRecipePhoto(file);
+    const preview=document.getElementById('recipePhotoPreview');
+    preview.src=pendingRecipePhoto;preview.style.display='block';
+    document.getElementById('removeRecipePhoto').classList.remove('hidden');
+  }catch{
+    alert('Das Foto konnte nicht verarbeitet werden. Bitte ein anderes Bild versuchen.');
+    pendingRecipePhoto='';
+  }
+};
+document.getElementById('removeRecipePhoto').onclick=()=>{
+  pendingRecipePhoto='';recipePhotoInput.value='';
+  const preview=document.getElementById('recipePhotoPreview');preview.src='';preview.style.display='none';
+  document.getElementById('removeRecipePhoto').classList.add('hidden');
+};
+
 document.getElementById('saveRecipe').onclick=()=>{
   const name=document.getElementById('recipeName').value.trim();
   const servings=Math.max(1,Math.round(+document.getElementById('recipeServings').value||1));
@@ -869,12 +936,15 @@ document.getElementById('saveRecipe').onclick=()=>{
   const meal=document.getElementById('recipeMeal').value;
   if(!name) return alert('Bitte einen Rezeptnamen eintragen.');
   if(cal==='') return alert('Bitte Kalorien pro Portion eintragen.');
-  const recipe={id:Date.now(),name,servings,cal:+cal||0,prot:+prot||0,ingredients,steps,meal};
+  const recipe={id:Date.now(),name,servings,cal:+cal||0,prot:+prot||0,ingredients,steps,meal,photo:pendingRecipePhoto||''};
   data.recipes=data.recipes||[];
   data.recipes.unshift(recipe);
   save();renderRecipes();
   ['recipeName','recipeCal','recipeProt','recipeIngredients','recipeSteps'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('recipeServings').value='2';
+  pendingRecipePhoto='';recipePhotoInput.value='';
+  const preview=document.getElementById('recipePhotoPreview');preview.src='';preview.style.display='none';
+  document.getElementById('removeRecipePhoto').classList.add('hidden');
   alert('Rezept gespeichert.');
 };
 
