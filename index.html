@@ -90,13 +90,22 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 .exercise-tutorial-body ol{margin:6px 0 8px;padding-left:20px}
 .exercise-tutorial-body li{margin:4px 0}
 .exercise-tip{padding:8px 9px;border-radius:10px;background:color-mix(in srgb,#3b82f6 10%,transparent);color:var(--muted)}
+
+.recipe-card{border:1px solid var(--border);border-radius:14px;padding:12px;margin-top:10px;background:color-mix(in srgb,var(--card) 94%,transparent)}
+.recipe-card h3{margin:0 0 4px;font-size:1rem}
+.recipe-meta{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px}
+.recipe-section{margin-top:10px}
+.recipe-section strong{display:block;margin-bottom:4px}
+.recipe-text{white-space:pre-wrap;line-height:1.45}
+.recipe-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.recipe-empty{padding:12px;border:1px dashed var(--border);border-radius:12px;color:var(--muted)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 <div class="wrap">
   <h1>Mein Ernährungs- & Fitnesstracker</h1>
-  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v4.4</span></div>
+  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v4.5</span></div>
 
   
 <div class="card">
@@ -495,6 +504,36 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
     </div>
   </section>
 
+  <section id="viewRecipes" class="hidden">
+    <div class="card">
+      <h2>🍳 Rezeptsammlung</h2>
+      <div class="note">Speichere eigene Rezepte mit Nährwerten und teile sie später direkt über dein iPhone.</div>
+      <div class="grid two" style="margin-top:10px">
+        <label>Rezeptname<input id="recipeName" placeholder="z. B. Protein-Pasta mit Hähnchen"></label>
+        <label>Portionen<input id="recipeServings" type="number" min="1" step="1" value="2"></label>
+        <label>Kalorien pro Portion<input id="recipeCal" type="number" min="0" step="1" placeholder="z. B. 620"></label>
+        <label>Protein pro Portion (g)<input id="recipeProt" type="number" min="0" step="0.1" placeholder="z. B. 48"></label>
+        <label>Mahlzeit<select id="recipeMeal"><option>Mittag</option><option>Abendessen</option><option>Nachtisch</option><option>Snack</option></select></label>
+      </div>
+      <label>Zutaten
+        <textarea id="recipeIngredients" rows="6" placeholder="z. B.
+250 g Hähnchenbrust
+160 g Nudeln
+200 g Tomaten
+Gewürze"></textarea>
+      </label>
+      <label>Zubereitung
+        <textarea id="recipeSteps" rows="6" placeholder="Kurze Schritte zur Zubereitung …"></textarea>
+      </label>
+      <button class="primary" id="saveRecipe" type="button">Rezept speichern</button>
+    </div>
+
+    <div class="card">
+      <h2>Meine Rezepte</h2>
+      <div id="recipeList"></div>
+    </div>
+  </section>
+
   <section id="viewFavorites" class="hidden">
     <div class="card">
       <h2>Favoriten</h2>
@@ -514,12 +553,13 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 </div>
 
 <div class="sticky">
-  <div class="sticky-inner" style="grid-template-columns:repeat(6,1fr)">
+  <div class="sticky-inner" style="grid-template-columns:repeat(7,minmax(70px,1fr));overflow-x:auto">
     <button data-view="Today">🍽️<span>Heute</span></button>
     <button data-view="Weight">⚖️<span>Gewicht</span></button>
     <button data-view="Week">📊<span>Woche</span></button>
     <button data-view="Fitness">💪<span>Fitness</span></button>
     <button data-view="Profile">👤<span>Profil</span></button>
+    <button data-view="Recipes">🍳<span>Rezepte</span></button>
     <button data-view="Favorites">⭐<span>Favoriten</span></button>
   </div>
 </div>
@@ -533,6 +573,7 @@ const DEFAULTS={
   weights:[],
   profile:{name:'',sex:'male',age:'',height:'',weight:'',activity:1.5,goal:'lose',pace:500,configured:false},
   recentMeals:[],
+  recipes:[],
   adaptive:{lastSuggestion:null},
   workoutDays:{},
   workoutHistory:[],
@@ -565,7 +606,7 @@ function load(){
     const x=JSON.parse(localStorage.getItem(KEY));
     if(!x) return structuredClone(DEFAULTS);
     return {...structuredClone(DEFAULTS),...x,
-      days:x.days||{},weights:x.weights||[],favorites:x.favorites||structuredClone(DEFAULTS.favorites),profile:x.profile||structuredClone(DEFAULTS.profile),recentMeals:x.recentMeals||[],adaptive:x.adaptive||structuredClone(DEFAULTS.adaptive),workoutDays:x.workoutDays||{},workoutHistory:x.workoutHistory||[],exercises:x.exercises||structuredClone(DEFAULTS.exercises)};
+      days:x.days||{},weights:x.weights||[],favorites:x.favorites||structuredClone(DEFAULTS.favorites),profile:x.profile||structuredClone(DEFAULTS.profile),recentMeals:x.recentMeals||[],recipes:x.recipes||[],adaptive:x.adaptive||structuredClone(DEFAULTS.adaptive),workoutDays:x.workoutDays||{},workoutHistory:x.workoutHistory||[],exercises:x.exercises||structuredClone(DEFAULTS.exercises)};
   }catch{return structuredClone(DEFAULTS)}
 }
 function save(){localStorage.setItem(KEY,JSON.stringify(data))}
@@ -726,9 +767,71 @@ function renderFavorites(){
     actions.append(add,del);r.appendChild(actions);root.appendChild(r);
   });
 }
-function renderAll(){renderToday();renderWeights();renderWeek();renderFavorites();renderFitness();renderProfile();renderRecentMeals();renderAdaptiveGoal()}
+function recipeShareText(r){
+  const parts=[
+    `🍳 ${r.name}`,
+    `Portionen: ${r.servings}`,
+    `Pro Portion: ${Math.round(r.cal)} kcal · ${round1(r.prot)} g Protein`,
+    '',
+    'Zutaten:',
+    r.ingredients||'–',
+    '',
+    'Zubereitung:',
+    r.steps||'–',
+    '',
+    'Geteilt aus meinem Ernährungs- & Fitnesstracker'
+  ];
+  return parts.join('\n');
+}
+async function shareRecipe(r){
+  const text=recipeShareText(r);
+  try{
+    if(navigator.share){
+      await navigator.share({title:r.name,text});
+      return;
+    }
+    if(navigator.clipboard?.writeText){
+      await navigator.clipboard.writeText(text);
+      alert('Rezept in die Zwischenablage kopiert.');
+      return;
+    }
+  }catch(err){
+    if(err?.name==='AbortError') return;
+  }
+  prompt('Rezept kopieren:',text);
+}
+function renderRecipes(){
+  const root=document.getElementById('recipeList');
+  if(!root) return;
+  root.innerHTML='';
+  const list=data.recipes||[];
+  if(!list.length){root.innerHTML='<div class="recipe-empty small">Noch keine Rezepte gespeichert.</div>';return}
+  list.forEach((r,i)=>{
+    const card=document.createElement('div');card.className='recipe-card';
+    card.innerHTML=`<h3>${r.name}</h3>
+      <div class="recipe-meta">
+        <span class="pill">${r.servings} Portion${r.servings===1?'':'en'}</span>
+        <span class="pill">${Math.round(r.cal)} kcal / Portion</span>
+        <span class="pill">${round1(r.prot)} g Protein / Portion</span>
+      </div>
+      <div class="recipe-section"><strong>Zutaten</strong><div class="recipe-text small">${escapeHtml(r.ingredients||'–')}</div></div>
+      <div class="recipe-section"><strong>Zubereitung</strong><div class="recipe-text small">${escapeHtml(r.steps||'–')}</div></div>`;
+    const actions=document.createElement('div');actions.className='recipe-actions';
+    const add=document.createElement('button');add.className='primary';add.textContent='1 Portion heute +';
+    add.onclick=()=>{selectedDate=todayISO();addEntry({name:r.name,cal:r.cal,prot:r.prot,meal:r.meal||'Abendessen'});showView('Today')};
+    const share=document.createElement('button');share.textContent='↗️ Teilen';share.onclick=()=>shareRecipe(r);
+    const del=document.createElement('button');del.className='danger';del.textContent='Löschen';
+    del.onclick=()=>{if(confirm(`Rezept „${r.name}“ löschen?`)){data.recipes.splice(i,1);save();renderRecipes()}};
+    actions.append(add,share,del);card.appendChild(actions);root.appendChild(card);
+  });
+}
+function escapeHtml(v){
+  return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+}
+
+function renderAll(){renderToday();renderWeights();renderWeek();renderFavorites();renderFitness();renderProfile();renderRecentMeals();renderAdaptiveGoal();renderRecipes()}
 function showView(name){
-  ['Today','Weight','Week','Fitness','Profile','Favorites'].forEach(v=>document.getElementById('view'+v).classList.toggle('hidden',v!==name));
+  ['Today','Weight','Week','Fitness','Profile','Recipes','Favorites'].forEach(v=>document.getElementById('view'+v).classList.toggle('hidden',v!==name));
   document.querySelectorAll('.sticky button').forEach(b=>b.classList.toggle('active',b.dataset.view===name));
   if(name==='Weight'){document.getElementById('weightDate').value=todayISO()}
 }
@@ -755,6 +858,25 @@ document.getElementById('addWeight').onclick=()=>{
   document.getElementById('weightValue').value='';
 };
 document.querySelectorAll('.sticky button').forEach(b=>b.onclick=()=>showView(b.dataset.view));
+
+document.getElementById('saveRecipe').onclick=()=>{
+  const name=document.getElementById('recipeName').value.trim();
+  const servings=Math.max(1,Math.round(+document.getElementById('recipeServings').value||1));
+  const cal=document.getElementById('recipeCal').value;
+  const prot=document.getElementById('recipeProt').value;
+  const ingredients=document.getElementById('recipeIngredients').value.trim();
+  const steps=document.getElementById('recipeSteps').value.trim();
+  const meal=document.getElementById('recipeMeal').value;
+  if(!name) return alert('Bitte einen Rezeptnamen eintragen.');
+  if(cal==='') return alert('Bitte Kalorien pro Portion eintragen.');
+  const recipe={id:Date.now(),name,servings,cal:+cal||0,prot:+prot||0,ingredients,steps,meal};
+  data.recipes=data.recipes||[];
+  data.recipes.unshift(recipe);
+  save();renderRecipes();
+  ['recipeName','recipeCal','recipeProt','recipeIngredients','recipeSteps'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('recipeServings').value='2';
+  alert('Rezept gespeichert.');
+};
 
 const mealPhoto=document.getElementById('mealPhoto');
 mealPhoto.onchange=e=>{
