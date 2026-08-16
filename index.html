@@ -207,7 +207,7 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 <div id="appToast" class="toast" role="status" aria-live="polite"></div>
 <div class="wrap">
   <h1>Mein Ernährungs- & Fitnesstracker</h1>
-  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v6.1.1</span></div>
+  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v6.2</span></div>
 
   
 <div class="card">
@@ -498,12 +498,17 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
     <div class="card">
       <h2>Eigenes Essen eintragen</h2>
       <div class="grid two">
-        <label>Lebensmittel / Mahlzeit<input id="foodName" placeholder="z. B. Hähnchen mit Kartoffeln"></label>
+        <label>Lebensmittel / Mahlzeit<input id="foodName" placeholder="z. B. Hähnchen, Reis oder Pizza"></label>
         <label>Mahlzeit<select id="mealType"><option>Mittag</option><option>Abendessen</option><option>Nachtisch</option><option>Snack</option></select></label>
-        <label>Kalorien<input id="foodCal" type="number" min="0" placeholder="750"></label>
-        <label>Protein (g)<input id="foodProt" type="number" min="0" step=".1" placeholder="55"></label>
+        <label>Menge (g)<input id="foodAmount" type="number" min="1" step="1" placeholder="z. B. 250"></label>
+        <label>Kalorien<input id="foodCal" type="number" min="0" placeholder="wird geschätzt"></label>
+        <label>Protein (g)<input id="foodProt" type="number" min="0" step=".1" placeholder="wird geschätzt"></label>
+      </div>
+      <div id="foodEstimateHint" class="note" style="margin-top:10px">
+        ✨ <strong>Schnellschätzung:</strong> Name und optional Menge eingeben. Bekannte Lebensmittel werden automatisch geschätzt. Die Werte kannst du jederzeit korrigieren.
       </div>
       <div class="actions">
+        <button type="button" id="estimateFood">✨ Neu schätzen</button>
         <button class="primary" id="addFood">Eintragen</button>
         <button id="saveFavorite">Als Favorit speichern</button>
       </div>
@@ -1381,6 +1386,71 @@ document.getElementById('onboardingNext').onclick=()=>{
 document.getElementById('onboardingSkip').onclick=()=>finishOnboarding(true);
 document.getElementById('restartOnboarding').onclick=()=>startOnboarding(true);
 
+// Offline-Schnellschätzung für häufige Lebensmittel und typische Gerichte.
+// kcal/prot beziehen sich bei type:'100g' auf 100 g; bei type:'portion' auf eine typische Portion.
+const FOOD_ESTIMATES=[
+  {keys:['hähnchenbrust','haehnchenbrust','hähnchen','haehnchen'],name:'Hähnchenbrust',type:'100g',cal:120,prot:23,defaultG:200},
+  {keys:['putenbrust','pute'],name:'Putenbrust',type:'100g',cal:110,prot:24,defaultG:200},
+  {keys:['rinderhack','hackfleisch'],name:'Hackfleisch',type:'100g',cal:240,prot:20,defaultG:150},
+  {keys:['lachs'],name:'Lachs',type:'100g',cal:205,prot:20,defaultG:180},
+  {keys:['thunfisch'],name:'Thunfisch',type:'100g',cal:120,prot:26,defaultG:150},
+  {keys:['ei','eier'],name:'Ei',type:'100g',cal:145,prot:13,defaultG:120},
+  {keys:['skyr'],name:'Skyr',type:'100g',cal:64,prot:11,defaultG:250},
+  {keys:['magerquark','quark'],name:'Magerquark',type:'100g',cal:67,prot:12,defaultG:250},
+  {keys:['joghurt'],name:'Joghurt',type:'100g',cal:65,prot:4,defaultG:200},
+  {keys:['reis'],name:'Reis gekocht',type:'100g',cal:130,prot:2.7,defaultG:200},
+  {keys:['nudeln','pasta'],name:'Nudeln gekocht',type:'100g',cal:150,prot:5.5,defaultG:250},
+  {keys:['kartoffeln','kartoffel'],name:'Kartoffeln',type:'100g',cal:77,prot:2,defaultG:300},
+  {keys:['haferflocken','oats'],name:'Haferflocken',type:'100g',cal:370,prot:13,defaultG:60},
+  {keys:['brot'],name:'Brot',type:'100g',cal:240,prot:8,defaultG:100},
+  {keys:['brötchen','broetchen'],name:'Brötchen',type:'100g',cal:270,prot:9,defaultG:70},
+  {keys:['banane'],name:'Banane',type:'100g',cal:89,prot:1.1,defaultG:120},
+  {keys:['apfel'],name:'Apfel',type:'100g',cal:52,prot:.3,defaultG:180},
+  {keys:['brokkoli'],name:'Brokkoli',type:'100g',cal:34,prot:2.8,defaultG:200},
+  {keys:['gemüse','gemuese'],name:'Gemüse',type:'100g',cal:45,prot:2,defaultG:250},
+  {keys:['salat'],name:'Salat',type:'100g',cal:25,prot:1.5,defaultG:250},
+  {keys:['pizza'],name:'Pizza',type:'portion',cal:850,prot:35,defaultG:400},
+  {keys:['döner','doener','kebab'],name:'Döner',type:'portion',cal:750,prot:40,defaultG:450},
+  {keys:['burger'],name:'Burger',type:'portion',cal:650,prot:30,defaultG:250},
+  {keys:['currywurst'],name:'Currywurst',type:'portion',cal:700,prot:25,defaultG:350},
+  {keys:['schnitzel'],name:'Schnitzel',type:'portion',cal:500,prot:35,defaultG:200},
+  {keys:['protein pudding','protein-pudding'],name:'Protein-Pudding',type:'portion',cal:150,prot:20,defaultG:200}
+];
+let foodEstimateTimer=null,foodFieldsManual=false;
+function normFoodText(v){return String(v||'').toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss')}
+function estimateFoodNow(force=false){
+  const nameEl=document.getElementById('foodName'),amountEl=document.getElementById('foodAmount'),calEl=document.getElementById('foodCal'),protEl=document.getElementById('foodProt'),hint=document.getElementById('foodEstimateHint');
+  if(!nameEl||!calEl||!protEl) return;
+  const raw=nameEl.value.trim(); if(!raw){if(hint) hint.innerHTML='✨ <strong>Schnellschätzung:</strong> Name und optional Menge eingeben.';return}
+  if(foodFieldsManual&&!force) return;
+  const n=normFoodText(raw);
+  // Zuerst eigene Favoriten/gemerkte Mahlzeiten bevorzugen.
+  const personal=[...(data.favorites||[]),...(data.recentMeals||[])].find(x=>n.includes(normFoodText(x.name))||normFoodText(x.name).includes(n));
+  if(personal){
+    calEl.value=Math.round(+personal.cal||0);protEl.value=round1(+personal.prot||0);
+    if(hint) hint.innerHTML=`✨ Aus deinen gespeicherten Daten geschätzt: <strong>${Math.round(+personal.cal||0)} kcal · ${round1(+personal.prot||0)} g Protein</strong>.`;
+    foodFieldsManual=false;return;
+  }
+  const item=FOOD_ESTIMATES.find(x=>x.keys.some(k=>n.includes(normFoodText(k))));
+  if(!item){
+    if(hint) hint.innerHTML='🤔 Kein sicherer Offline-Schätzwert gefunden. Kalorien und Protein bitte selbst ergänzen.';
+    return;
+  }
+  let amount=parseFloat(amountEl?.value||'');
+  if(!amount&&item.defaultG){amount=item.defaultG;if(amountEl) amountEl.value=amount}
+  let cal=item.cal,prot=item.prot;
+  if(item.type==='100g'){const f=(amount||100)/100;cal*=f;prot*=f}
+  else if(item.defaultG&&amount){const f=amount/item.defaultG;cal*=f;prot*=f}
+  calEl.value=Math.round(cal);protEl.value=round1(prot);foodFieldsManual=false;
+  if(hint) hint.innerHTML=`✨ Richtwert für <strong>${item.name}</strong>${amount?` (${Math.round(amount)} g)`:''}: <strong>${Math.round(cal)} kcal · ${round1(prot)} g Protein</strong>. Bitte bei Verpackungsangaben überschreiben.`;
+}
+function scheduleFoodEstimate(){clearTimeout(foodEstimateTimer);foodEstimateTimer=setTimeout(()=>estimateFoodNow(false),450)}
+document.getElementById('foodName').addEventListener('input',()=>{foodFieldsManual=false;scheduleFoodEstimate()});
+document.getElementById('foodAmount').addEventListener('input',()=>{foodFieldsManual=false;scheduleFoodEstimate()});
+document.getElementById('foodCal').addEventListener('input',()=>{foodFieldsManual=true});
+document.getElementById('foodProt').addEventListener('input',()=>{foodFieldsManual=true});
+document.getElementById('estimateFood').onclick=()=>{foodFieldsManual=false;estimateFoodNow(true);toast('✨ Mahlzeit neu geschätzt')};
+
 document.getElementById('datePicker').onchange=e=>{selectedDate=e.target.value||todayISO();renderToday()};
 document.getElementById('goalCal').oninput=e=>{data.goalCal=+e.target.value||2100;save();renderToday()};
 document.getElementById('goalProt').oninput=e=>{data.goalProt=+e.target.value||135;save();renderToday()};
@@ -1388,7 +1458,8 @@ document.getElementById('addFood').onclick=()=>{
   const name=document.getElementById('foodName').value.trim(), cal=document.getElementById('foodCal').value;
   if(!name||cal==='') return alert('Bitte Name und Kalorien eintragen.');
   addEntry({name,cal:+cal,prot:+document.getElementById('foodProt').value||0,meal:document.getElementById('mealType').value});
-  ['foodName','foodCal','foodProt'].forEach(id=>document.getElementById(id).value='');
+  ['foodName','foodAmount','foodCal','foodProt'].forEach(id=>document.getElementById(id).value='');
+  foodFieldsManual=false;const eh=document.getElementById('foodEstimateHint');if(eh)eh.innerHTML='✨ <strong>Schnellschätzung:</strong> Name und optional Menge eingeben. Bekannte Lebensmittel werden automatisch geschätzt.';
 };
 document.getElementById('saveFavorite').onclick=()=>{
   const name=document.getElementById('foodName').value.trim(), cal=document.getElementById('foodCal').value;
