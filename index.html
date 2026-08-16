@@ -62,13 +62,30 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 #barcodeReader{min-height:220px;border-radius:14px;overflow:hidden}
 #barcodeReader video{width:100%!important;height:auto!important;object-fit:cover}
 #barcodeReader__scan_region{background:rgba(128,128,128,.10)}
+
+.water-card{position:relative;overflow:hidden}
+.water-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.water-goal{padding:6px 10px;border:1px solid var(--border);border-radius:999px;font-size:.82rem;color:var(--muted)}
+.water-main{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;margin-top:12px}
+.water-glasses{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-items:end}
+.water-glass{height:74px;border:3px solid color-mix(in srgb,var(--text) 70%,transparent);border-top-width:4px;border-radius:10px 10px 16px 16px;position:relative;overflow:hidden;opacity:.55;background:color-mix(in srgb,var(--card) 85%,transparent)}
+.water-glass::after{content:'';position:absolute;left:0;right:0;bottom:0;height:var(--fill,0%);background:linear-gradient(180deg,#60a5fa,#2563eb);transition:height .2s ease}
+.water-glass.filled{opacity:1}
+.water-readout{text-align:right;min-width:112px}
+.water-readout .big{color:#60a5fa}
+.water-controls{display:grid;grid-template-columns:1fr 1.2fr 1.2fr;gap:8px;margin-top:12px}
+.water-controls button{text-align:center;font-weight:650}
+.water-controls button.primary-water{border-color:#3b82f6;color:#60a5fa}
+.water-progress{margin-top:10px}
+.water-progress .bar>div{background:#3b82f6}
+@media(max-width:520px){.water-main{grid-template-columns:1fr}.water-readout{text-align:left}.water-glass{height:62px}.water-controls{grid-template-columns:1fr 1fr}.water-controls button:last-child{grid-column:span 2}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 <div class="wrap">
   <h1>Mein Ernährungs- & Fitnesstracker</h1>
-  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v4.2</span></div>
+  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v4.3</span></div>
 
   
 <div class="card">
@@ -119,6 +136,35 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
       <div class="small" style="margin-top:8px">Protein <span id="protPct"></span></div><div class="bar"><div id="protBar"></div></div>
     </div>
 
+
+    <div class="card water-card">
+      <div class="water-head">
+        <div>
+          <h2 style="margin-bottom:4px">💧 Wasser</h2>
+          <div class="small muted">Ein Glas entspricht 250 ml.</div>
+        </div>
+        <div class="water-goal">Ziel: <span id="waterGoalLabel">2,5 L</span></div>
+      </div>
+
+      <div class="water-main">
+        <div class="water-glasses" id="waterGlasses" aria-label="Wasserfortschritt"></div>
+        <div class="water-readout">
+          <div class="big"><span id="waterLiters">0,00</span> L</div>
+          <div class="small muted">getrunken</div>
+          <div class="small" style="margin-top:4px"><span id="waterPct">0</span>% erreicht</div>
+        </div>
+      </div>
+
+      <div class="water-controls">
+        <button id="waterMinus250" type="button">− 250 ml</button>
+        <button id="waterPlus250" type="button" class="primary-water">🥛 + 250 ml</button>
+        <button id="waterPlus500" type="button" class="primary-water">🥛 + 500 ml</button>
+      </div>
+
+      <div class="water-progress">
+        <div class="bar"><div id="waterBar"></div></div>
+      </div>
+    </div>
 
     <div class="card">
       <h2>🎯 Intelligente Zielkontrolle</h2>
@@ -513,7 +559,8 @@ function load(){
 }
 function save(){localStorage.setItem(KEY,JSON.stringify(data))}
 function day(date=selectedDate){
-  if(!data.days[date]) data.days[date]={entries:[]};
+  if(!data.days[date]) data.days[date]={entries:[],waterMl:0};
+  if(typeof data.days[date].waterMl!=='number') data.days[date].waterMl=0;
   return data.days[date];
 }
 function fmtDate(iso){
@@ -539,6 +586,8 @@ function renderToday(){
   document.getElementById('protPct').textContent=pp+'%';
   document.getElementById('calBar').style.width=Math.min(cp,100)+'%';
   document.getElementById('protBar').style.width=Math.min(pp,100)+'%';
+
+  renderWater();
 
   const q=document.getElementById('quickList'); q.innerHTML='';
   data.favorites.slice(0,8).forEach((f,i)=>{
@@ -577,6 +626,43 @@ function addEntry(e){
   rememberMeal(e);
   save();renderAll();
 }
+function renderWater(){
+  const d=day();
+  const goal=2500;
+  const ml=Math.max(0,+d.waterMl||0);
+  const pct=Math.max(0,Math.min(100,Math.round(ml/goal*100)));
+  document.getElementById('waterLiters').textContent=(ml/1000).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('waterPct').textContent=pct;
+  document.getElementById('waterBar').style.width=pct+'%';
+  document.getElementById('waterGoalLabel').textContent=(goal/1000).toLocaleString('de-DE',{minimumFractionDigits:1,maximumFractionDigits:1})+' L';
+
+  const root=document.getElementById('waterGlasses');
+  root.innerHTML='';
+  const glassCount=5;
+  const perGlass=goal/glassCount;
+  for(let i=0;i<glassCount;i++){
+    const g=document.createElement('div');
+    g.className='water-glass';
+    const amount=Math.max(0,Math.min(perGlass,ml-i*perGlass));
+    const fill=Math.round(amount/perGlass*100);
+    g.style.setProperty('--fill',fill+'%');
+    if(fill>0) g.classList.add('filled');
+    g.title=`${Math.round(amount)} von ${Math.round(perGlass)} ml`;
+    root.appendChild(g);
+  }
+}
+
+function changeWater(delta){
+  const d=day();
+  d.waterMl=Math.max(0,(+d.waterMl||0)+delta);
+  save();
+  renderWater();
+}
+
+document.getElementById('waterMinus250').onclick=()=>changeWater(-250);
+document.getElementById('waterPlus250').onclick=()=>changeWater(250);
+document.getElementById('waterPlus500').onclick=()=>changeWater(500);
+
 function renderWeights(){
   const w=[...data.weights].sort((a,b)=>a.date.localeCompare(b.date));
   const last=w.at(-1), first=w[0];
