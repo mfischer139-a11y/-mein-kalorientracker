@@ -78,6 +78,19 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 .water-controls button{text-align:center;font-weight:650}
 .water-controls button.primary-water{border-color:#3b82f6;color:#60a5fa}
 .water-progress{margin-top:10px}
+
+
+.xp-card{position:relative;overflow:hidden}
+.xp-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.xp-level{display:flex;align-items:center;gap:10px}
+.xp-level-badge{width:54px;height:54px;border-radius:16px;display:grid;place-items:center;font-size:1.35rem;font-weight:800;border:1px solid #3b82f6;background:rgba(59,130,246,.12);color:#60a5fa}
+.xp-total{font-size:1.05rem;font-weight:750}
+.xp-bar{height:14px;border-radius:999px;background:var(--border);overflow:hidden;margin-top:12px}
+.xp-bar>div{height:100%;width:0;background:linear-gradient(90deg,#3b82f6,#8b5cf6);transition:width .25s ease}
+.xp-meta{display:flex;justify-content:space-between;gap:12px;margin-top:6px;font-size:.8rem;color:var(--muted)}
+.xp-rules{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.xp-rule{padding:9px;border:1px solid var(--border);border-radius:12px;text-align:center}
+@media(max-width:520px){.xp-rules{grid-template-columns:1fr 1fr}.xp-rule:last-child{grid-column:1/-1}}
 .water-progress .bar>div{background:#3b82f6}
 @media(max-width:520px){.water-main{grid-template-columns:1fr}.water-readout{text-align:left}.water-glass{height:62px}.water-controls{grid-template-columns:1fr 1fr}.water-controls button:last-child{grid-column:span 2}}
 
@@ -108,7 +121,7 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 <body>
 <div class="wrap">
   <h1>Mein Ernährungs- & Fitnesstracker</h1>
-  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v4.6</span></div>
+  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v4.7</span></div>
 
   
 <div class="card">
@@ -407,6 +420,31 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 
 
   <section id="viewFitness" class="hidden">
+    <div class="card xp-card">
+      <div class="xp-head">
+        <div class="xp-level">
+          <div class="xp-level-badge" id="fitnessLevelBadge">1</div>
+          <div>
+            <div class="small muted">Fitness-Level</div>
+            <div class="big" id="fitnessLevelText">Level 1</div>
+            <div class="xp-total"><span id="fitnessXpTotal">0</span> EP gesamt</div>
+          </div>
+        </div>
+        <button id="shareFitnessProgress" type="button">↗️ Fortschritt teilen</button>
+      </div>
+      <div class="xp-bar"><div id="fitnessXpBar"></div></div>
+      <div class="xp-meta">
+        <span id="fitnessXpProgress">0 / 250 EP</span>
+        <span id="fitnessXpToNext">Noch 250 EP bis Level 2</span>
+      </div>
+      <div class="xp-rules">
+        <div class="xp-rule"><strong>+10 EP</strong><br><span class="small muted">pro erledigtem Satz</span></div>
+        <div class="xp-rule"><strong>+25 EP</strong><br><span class="small muted">komplettes Training</span></div>
+        <div class="xp-rule"><strong id="fitnessCompletedCount">0</strong><br><span class="small muted">Trainings abgeschlossen</span></div>
+      </div>
+      <div class="small muted" style="margin-top:10px">EP werden pro Satz und Tag nur einmal vergeben – erneutes Abhaken bringt keine zusätzlichen Punkte.</div>
+    </div>
+
     <div class="card">
       <h2>💪 Training heute</h2>
       <div class="note">Für den Einstieg: 2× pro Woche Ganzkörper. Hake jeden Satz ab. Wiederholungen kannst du direkt anpassen.</div>
@@ -588,6 +626,7 @@ const DEFAULTS={
   adaptive:{lastSuggestion:null},
   workoutDays:{},
   workoutHistory:[],
+  fitnessXp:0,
   exercises:[
     {id:'chairSquat',name:'Stuhl-Kniebeugen',sets:2,target:'8–12 Wdh.'},
     {id:'pushup',name:'Erhöhte Liegestütze',sets:2,target:'6–12 Wdh.'},
@@ -617,7 +656,7 @@ function load(){
     const x=JSON.parse(localStorage.getItem(KEY));
     if(!x) return structuredClone(DEFAULTS);
     return {...structuredClone(DEFAULTS),...x,
-      days:x.days||{},weights:x.weights||[],favorites:x.favorites||structuredClone(DEFAULTS.favorites),profile:x.profile||structuredClone(DEFAULTS.profile),recentMeals:x.recentMeals||[],recipes:x.recipes||[],adaptive:x.adaptive||structuredClone(DEFAULTS.adaptive),workoutDays:x.workoutDays||{},workoutHistory:x.workoutHistory||[],exercises:x.exercises||structuredClone(DEFAULTS.exercises)};
+      days:x.days||{},weights:x.weights||[],favorites:x.favorites||structuredClone(DEFAULTS.favorites),profile:x.profile||structuredClone(DEFAULTS.profile),recentMeals:x.recentMeals||[],recipes:x.recipes||[],adaptive:x.adaptive||structuredClone(DEFAULTS.adaptive),workoutDays:x.workoutDays||{},workoutHistory:x.workoutHistory||[],fitnessXp:+x.fitnessXp||0,exercises:x.exercises||structuredClone(DEFAULTS.exercises)};
   }catch{return structuredClone(DEFAULTS)}
 }
 function save(){localStorage.setItem(KEY,JSON.stringify(data))}
@@ -1022,8 +1061,39 @@ renderAssist();
 
 
 function workoutDay(date=selectedDate){
-  if(!data.workoutDays[date]) data.workoutDays[date]={checks:{},completed:false};
-  return data.workoutDays[date];
+  if(!data.workoutDays[date]) data.workoutDays[date]={checks:{},completed:false,xpSets:{},completionBonusAwarded:false};
+  const wd=data.workoutDays[date];
+  if(!wd.checks) wd.checks={};
+  if(!wd.xpSets) wd.xpSets={};
+  if(typeof wd.completed!=='boolean') wd.completed=false;
+  if(typeof wd.completionBonusAwarded!=='boolean') wd.completionBonusAwarded=false;
+  return wd;
+}
+
+const XP_PER_SET=10;
+const XP_WORKOUT_BONUS=25;
+const XP_PER_LEVEL=250;
+
+function fitnessLevelInfo(){
+  const xp=Math.max(0,+data.fitnessXp||0);
+  const level=Math.floor(xp/XP_PER_LEVEL)+1;
+  const current=xp%XP_PER_LEVEL;
+  return {xp,level,current,next:XP_PER_LEVEL-current,pct:Math.round(current/XP_PER_LEVEL*100)};
+}
+
+function awardFitnessXp(amount){
+  data.fitnessXp=Math.max(0,(+data.fitnessXp||0)+amount);
+}
+
+function renderFitnessXp(){
+  const info=fitnessLevelInfo();
+  document.getElementById('fitnessLevelBadge').textContent=info.level;
+  document.getElementById('fitnessLevelText').textContent='Level '+info.level;
+  document.getElementById('fitnessXpTotal').textContent=info.xp;
+  document.getElementById('fitnessXpBar').style.width=Math.min(info.pct,100)+'%';
+  document.getElementById('fitnessXpProgress').textContent=`${info.current} / ${XP_PER_LEVEL} EP`;
+  document.getElementById('fitnessXpToNext').textContent=`Noch ${info.next} EP bis Level ${info.level+1}`;
+  document.getElementById('fitnessCompletedCount').textContent=(data.workoutHistory||[]).length;
 }
 
 const EXERCISE_TUTORIALS={
@@ -1036,6 +1106,7 @@ const EXERCISE_TUTORIALS={
 };
 function renderFitness(){
   const wd=workoutDay();
+  renderFitnessXp();
   const root=document.getElementById('workoutList'); root.innerHTML='';
   data.exercises.forEach(ex=>{
     const box=document.createElement('div'); box.className='card'; box.style.marginBottom='8px';
@@ -1055,7 +1126,15 @@ function renderFitness(){
       const row=document.createElement('label');
       row.style.display='flex';row.style.alignItems='center';row.style.gap='10px';row.style.margin='10px 0 0';
       const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=!!wd.checks[key]; cb.style.width='22px';cb.style.height='22px';
-      cb.onchange=()=>{wd.checks[key]=cb.checked;wd.completed=false;save();renderFitness()};
+      cb.onchange=()=>{
+        wd.checks[key]=cb.checked;
+        wd.completed=false;
+        if(cb.checked && !wd.xpSets[key]){
+          wd.xpSets[key]=true;
+          awardFitnessXp(XP_PER_SET);
+        }
+        save();renderFitness();
+      };
       const txt=document.createElement('span'); txt.textContent=`Satz ${s} erledigt`;
       row.append(cb,txt);box.appendChild(row);
     }
@@ -1085,16 +1164,44 @@ document.getElementById('finishWorkout').onclick=()=>{
   const wd=workoutDay();
   const total=data.exercises.reduce((s,e)=>s+e.sets,0);
   const done=Object.values(wd.checks).filter(Boolean).length;
+  const wasInHistory=data.workoutHistory.includes(selectedDate);
   wd.completed=true;
-  if(!data.workoutHistory.includes(selectedDate)) data.workoutHistory.push(selectedDate);
+  if(!wasInHistory) data.workoutHistory.push(selectedDate);
+  let bonus=0;
+  if(done===total && !wd.completionBonusAwarded){
+    wd.completionBonusAwarded=true;
+    bonus=XP_WORKOUT_BONUS;
+    awardFitnessXp(bonus);
+  }
   save();renderFitness();
-  alert(`Training gespeichert: ${done}/${total} Sätze erledigt.`);
+  const extra=bonus?` + ${bonus} Bonus-EP!`:(done===total?' Bonus bereits gutgeschrieben.':' Für den +25-EP-Bonus alle Sätze abhaken.');
+  alert(`Training gespeichert: ${done}/${total} Sätze erledigt.${extra}`);
 };
 document.getElementById('resetWorkout').onclick=()=>{
-  if(confirm('Alle Häkchen für diesen Tag zurücksetzen?')){
-    data.workoutDays[selectedDate]={checks:{},completed:false};
+  if(confirm('Alle Häkchen für diesen Tag zurücksetzen? Bereits verdiente EP bleiben erhalten.')){
+    const wd=workoutDay();
+    wd.checks={};
+    wd.completed=false;
     data.workoutHistory=data.workoutHistory.filter(d=>d!==selectedDate);
     save();renderFitness();
+  }
+};
+
+document.getElementById('shareFitnessProgress').onclick=async()=>{
+  const info=fitnessLevelInfo();
+  const trainings=(data.workoutHistory||[]).length;
+  const text=`💪 Mein Fitness-Fortschritt\nLevel ${info.level} · ${info.xp} EP\n${trainings} Training${trainings===1?'':'s'} abgeschlossen\nNoch ${info.next} EP bis Level ${info.level+1}.\n\nWer sammelt diese Woche mehr EP? 😄`;
+  try{
+    if(navigator.share){
+      await navigator.share({title:'Mein Fitness-Fortschritt',text});
+    }else if(navigator.clipboard){
+      await navigator.clipboard.writeText(text);
+      alert('Fortschritt wurde kopiert und kann jetzt geteilt werden.');
+    }else{
+      prompt('Fortschritt kopieren:',text);
+    }
+  }catch(err){
+    if(err?.name!=='AbortError') prompt('Fortschritt kopieren:',text);
   }
 };
 
