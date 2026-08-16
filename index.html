@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Kalorientracker">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.svg">
@@ -21,7 +21,7 @@
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text)}
-.wrap{max-width:900px;margin:auto;padding:16px 16px 90px}
+.wrap{max-width:900px;margin:auto;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(90px + env(safe-area-inset-bottom,0px))}
 h1{font-size:1.55rem;margin:4px 0 4px}
 h2{font-size:1.05rem;margin:0 0 12px}
 .sub{color:var(--muted);font-size:.9rem;margin-bottom:16px}
@@ -186,11 +186,14 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 /* v6.0 compact app navigation + Today dashboard */
 .today-hub{display:flex;gap:7px;overflow-x:auto;margin:2px 0 12px;padding:4px 1px 7px;scrollbar-width:none}.today-hub::-webkit-scrollbar{display:none}.today-hub button{flex:1;min-width:max-content;border-radius:999px;padding:9px 13px}.today-hub button.active{background:var(--accent);border-color:var(--accent);color:var(--bg)}
 .today-shortcuts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}.today-shortcuts button{font-weight:750}
-.sticky{left:12px;right:12px;bottom:10px;border:1px solid var(--border);border-radius:24px;padding:7px;background:color-mix(in srgb,var(--card) 92%,transparent);box-shadow:0 12px 35px rgba(0,0,0,.28)}
+.sticky{left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom,0px));border:1px solid var(--border);border-radius:24px;padding:7px;background:color-mix(in srgb,var(--card) 92%,transparent);box-shadow:0 12px 35px rgba(0,0,0,.28)}
 .sticky-inner.app-dock{grid-template-columns:repeat(4,1fr);gap:5px}.sticky .app-dock button{border:0;background:transparent;border-radius:17px;padding:8px 4px}.sticky .app-dock button.active{background:color-mix(in srgb,var(--accent) 18%,var(--card));color:#60a5fa}.sticky .app-dock button span{display:block;font-size:.68rem;margin-top:2px}
 .progress-picker{display:flex;gap:8px;margin:0 0 10px}.progress-picker button{flex:1}.progress-picker button.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
 @media(max-width:520px){.sticky{padding:6px;left:8px;right:8px}.sticky .app-dock button{font-size:1rem!important}.sticky .app-dock button span{font-size:.66rem!important}}
 
+
+/* v6.1.1 iPhone safe-area fix */
+@supports(padding:max(0px)){body{min-height:100dvh}}
 
 /* v6.1 polish */
 #viewToday>.card{margin-bottom:10px}#viewToday>.grid.four{gap:8px;margin-bottom:10px}#viewToday>.grid.four .metric{padding:11px 12px}#viewToday>.grid.four .big{font-size:1.45rem}.today-shortcuts{margin-bottom:9px}.today-shortcuts button{padding:8px 10px;font-size:.92rem}.today-hub{margin-bottom:8px}.today-hub button.active{box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 30%,transparent)}
@@ -204,7 +207,7 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 <div id="appToast" class="toast" role="status" aria-live="polite"></div>
 <div class="wrap">
   <h1>Mein Ernährungs- & Fitnesstracker</h1>
-  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v6.1</span></div>
+  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v6.1.1</span></div>
 
   
 <div class="card">
