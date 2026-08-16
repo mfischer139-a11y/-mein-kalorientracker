@@ -182,13 +182,22 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
 .tutorial-target{outline:3px solid #3b82f6!important;outline-offset:4px;border-radius:16px;transition:outline .2s}
 .onboarding-restart{margin-top:10px}
 
+
+/* v6.0 compact app navigation + Today dashboard */
+.today-hub{display:flex;gap:7px;overflow-x:auto;margin:2px 0 12px;padding:4px 1px 7px;scrollbar-width:none}.today-hub::-webkit-scrollbar{display:none}.today-hub button{flex:1;min-width:max-content;border-radius:999px;padding:9px 13px}.today-hub button.active{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+.today-shortcuts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}.today-shortcuts button{font-weight:750}
+.sticky{left:12px;right:12px;bottom:10px;border:1px solid var(--border);border-radius:24px;padding:7px;background:color-mix(in srgb,var(--card) 92%,transparent);box-shadow:0 12px 35px rgba(0,0,0,.28)}
+.sticky-inner.app-dock{grid-template-columns:repeat(4,1fr);gap:5px}.sticky .app-dock button{border:0;background:transparent;border-radius:17px;padding:8px 4px}.sticky .app-dock button.active{background:color-mix(in srgb,var(--accent) 18%,var(--card));color:#60a5fa}.sticky .app-dock button span{display:block;font-size:.68rem;margin-top:2px}
+.progress-picker{display:flex;gap:8px;margin:0 0 10px}.progress-picker button{flex:1}.progress-picker button.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+@media(max-width:520px){.sticky{padding:6px;left:8px;right:8px}.sticky .app-dock button{font-size:1rem!important}.sticky .app-dock button span{font-size:.66rem!important}}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 <div class="wrap">
   <h1>Mein Ernährungs- & Fitnesstracker</h1>
-  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v5.5.1</span></div>
+  <div class="sub">Für jede Person separat einrichtbar. Daten bleiben lokal auf dem jeweiligen Gerät gespeichert. <span class="small muted">v6.0</span></div>
 
   
 <div class="card">
@@ -208,6 +217,16 @@ button.danger{border-color:#b91c1c;color:#b91c1c}
         Richte zuerst dein persönliches Profil ein. Danach berechnet der Tracker passende Startwerte für Kalorien und Protein.
       </div>
       <button class="primary" id="startProfileSetup">Profil einrichten</button>
+    </div>
+
+    <div class="today-hub" id="todayHub">
+      <button type="button" data-today-tab="food" class="active">🍽️ Ernährung</button>
+      <button type="button" data-today-tab="activity">👟 Aktivität</button>
+      <button type="button" data-today-tab="goals">🎯 Ziele</button>
+    </div>
+    <div class="today-shortcuts">
+      <button type="button" data-open-view="Recipes">🍳 Rezepte</button>
+      <button type="button" data-open-view="Favorites">⭐ Favoriten</button>
     </div>
 
     <div class="card">
@@ -766,14 +785,11 @@ Gewürze"></textarea>
 </div>
 
 <div class="sticky">
-  <div class="sticky-inner nav-seven">
-    <button data-view="Today">🍽️<span>Heute</span></button>
-    <button data-view="Weight">⚖️<span>Gewicht</span></button>
-    <button data-view="Week">📊<span>Woche</span></button>
+  <div class="sticky-inner app-dock">
+    <button data-view="Today">🏠<span>Heute</span></button>
     <button data-view="Fitness">💪<span>Fitness</span></button>
+    <button data-view="Progress">📈<span>Fortschritt</span></button>
     <button data-view="Profile">👤<span>Profil</span></button>
-    <button data-view="Recipes">🍳<span>Rezepte</span></button>
-    <button data-view="Favorites">⭐<span>Favoriten</span></button>
   </div>
 </div>
 
@@ -1262,10 +1278,24 @@ function escapeHtml(v){
 }
 
 function renderAll(){renderToday();renderWeights();renderWeek();renderFavorites();renderFitness();renderProfile();renderRecentMeals();renderAdaptiveGoal();renderRecipes()}
+let progressSubView='Weight';
 function showView(name){
-  ['Today','Weight','Week','Fitness','Profile','Recipes','Favorites'].forEach(v=>document.getElementById('view'+v).classList.toggle('hidden',v!==name));
-  document.querySelectorAll('.sticky button').forEach(b=>b.classList.toggle('active',b.dataset.view===name));
-  if(name==='Weight'){document.getElementById('weightDate').value=todayISO()}
+  const actual=name==='Progress'?progressSubView:name;
+  ['Today','Weight','Week','Fitness','Profile','Recipes','Favorites'].forEach(v=>document.getElementById('view'+v).classList.toggle('hidden',v!==actual));
+  document.querySelectorAll('.sticky button').forEach(b=>{
+    const active=b.dataset.view===name || (b.dataset.view==='Progress' && (actual==='Weight'||actual==='Week'));
+    b.classList.toggle('active',active);
+  });
+  if(actual==='Weight'){document.getElementById('weightDate').value=todayISO()}
+  if(name==='Progress'||actual==='Weight'||actual==='Week') ensureProgressPicker(actual);
+}
+function ensureProgressPicker(actual){
+  document.querySelectorAll('.progress-picker').forEach(x=>x.remove());
+  const sec=document.getElementById('view'+actual); if(!sec) return;
+  const picker=document.createElement('div');picker.className='progress-picker';
+  picker.innerHTML=`<button type="button" data-progress="Weight" class="${actual==='Weight'?'active':''}">⚖️ Gewicht</button><button type="button" data-progress="Week" class="${actual==='Week'?'active':''}">📊 Woche</button>`;
+  sec.prepend(picker);
+  picker.querySelectorAll('[data-progress]').forEach(b=>b.onclick=()=>{progressSubView=b.dataset.progress;showView('Progress');window.scrollTo({top:0,behavior:'smooth'})});
 }
 
 // v5.5.1 - einmaliger Rundgang durch die wichtigsten Funktionen.
@@ -2074,7 +2104,30 @@ document.getElementById('resetAll').onclick=()=>{
 };
 
 document.getElementById('weightDate').value=todayISO();
-showView('Today');renderAll();
+
+function setupV6Dashboard(){
+  const today=document.getElementById('viewToday'); if(!today) return;
+  const cards=[...today.querySelectorAll(':scope > .card')];
+  cards.forEach(card=>{
+    const t=(card.querySelector('h2')?.textContent||'').trim();
+    let group='food';
+    if(card.classList.contains('steps-card') || t.includes('Wasser')) group='activity';
+    if(t.includes('Tages-Challenge') || t.includes('Intelligente Zielkontrolle') || t==='Tagesziele') group='goals';
+    // Date/summary cards stay visible in every Today tab.
+    if(card.querySelector('#todayLabel') || card.querySelector('#totalCal')) group='always';
+    card.dataset.todayGroup=group;
+  });
+  document.querySelectorAll('[data-open-view]').forEach(b=>b.onclick=()=>{showView(b.dataset.openView);window.scrollTo({top:0,behavior:'smooth'})});
+  document.querySelectorAll('[data-today-tab]').forEach(b=>b.onclick=()=>setTodayTab(b.dataset.todayTab));
+  setTodayTab('food');
+}
+function setTodayTab(tab){
+  document.querySelectorAll('[data-today-tab]').forEach(b=>b.classList.toggle('active',b.dataset.todayTab===tab));
+  document.querySelectorAll('#viewToday > .card[data-today-group]').forEach(card=>card.classList.toggle('hidden',card.dataset.todayGroup!=='always'&&card.dataset.todayGroup!==tab));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+setupV6Dashboard();showView('Today');renderAll();
 if(data.profile?.configured && !data.onboardingSeen){setTimeout(()=>startOnboarding(),700)}
 
 if ('serviceWorker' in navigator) {
